@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--<resources>-->
+
+<!--    &lt;!&ndash; Tema Kustom untuk DatePickerDialog &ndash;&gt;-->
+<!--    <style name="CustomDatePickerDialogTheme" parent="android:Theme.Material.Light.Dialog">-->
+<!--        &lt;!&ndash; Ganti warna background &ndash;&gt;-->
+<!--        <item name="android:background">#FF8A3DFF</item>-->
+<!--        &lt;!&ndash; Ganti warna teks &ndash;&gt;-->
+<!--        <item name="android:textColorPrimary">#FFFFFF</item>-->
+<!--        &lt;!&ndash; Ganti warna tombol OK/Cancel &ndash;&gt;-->
+<!--        <item name="android:buttonBarButtonStyle">@style/CustomButtonStyle</item>-->
+<!--        &lt;!&ndash; Ganti warna ikon navigasi bulan &ndash;&gt;-->
+<!--        <item name="android:colorControlNormal">#FF8A3DFF</item>-->
+<!--        &lt;!&ndash; Ganti warna garis pemisah &ndash;&gt;-->
+<!--        <item name="android:divider">#FF8A3DFF</item>-->
+<!--    </style>-->
+
+<!--    &lt;!&ndash; Style untuk tombol OK/Cancel &ndash;&gt;-->
+<!--    <style name="CustomButtonStyle" parent="android:Widget.Material.Light.Button">-->
+<!--        <item name="android:textColor">#FF8A3DFF</item>-->
+<!--        <item name="android:backgroundTint">#FFFFFF</item>-->
+<!--    </style>-->
+
+<!--</resources>-->
+<resources>
+
+    <!-- Tema Kustom untuk DatePickerDialog -->
+    <style name="CustomDatePickerDialogTheme" parent="android:Theme.Material.Light.Dialog">
+        <item name="android:background">#FF8A3DFF</item> <!-- Warna latar belakang dialog -->
+        <item name="android:textColorPrimary">#FFFFFFFF</item> <!-- Warna teks utama -->
+        <item name="android:textColorSecondary">#FFB0BEC5</item> <!-- Warna teks sekunder -->
+        <item name="android:buttonBarButtonStyle">@style/CustomButtonStyle</item> <!-- Gaya tombol -->
+        <item name="android:colorAccent">#30000000</item> <!-- Warna accent -->
+    </style>
+
+    <!-- Style untuk tombol OK/Cancel -->
+    <style name="CustomButtonStyle" parent="android:Widget.Material.Button">
+        <item name="android:textColor">#FF8A3DFF</item> <!-- Warna teks tombol -->
+        <item name="android:backgroundTint">#FFFFFFFF</item> <!-- Warna latar belakang tombol -->
+<!--        <item name="android:rippleColor">#FF8A3DFF</item> &lt;!&ndash; Warna ripple saat ditekan &ndash;&gt;-->
+    </style>
+
+</resources>
+

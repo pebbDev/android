@@ -1,0 +1,128 @@
+<resources>
+    <string name="app_name">Infinite_Track</string>
+
+    <!--  Navigation  -->
+    <string name="bottom_menu_home">Home</string>
+    <string name="bottom_menu_inbox">Inbox</string>
+    <string name="bottom_menu_history">history</string>
+    <string name="bottom_menu_MyLeave">My Leave</string>
+    <string name="bottom_menu_contact">contact</string>
+    <string name="bottom_menu_profile">Profile</string>
+
+
+    //Home
+    <string name="see_more">See More</string>
+    <string name="today_s_news">Today\'s News</string>
+    <string name="attendance_history">Attendance History</string>
+    <string name="list_time_off">List Time-Off Request</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="email_password_empty_error">Email and Password Can\'t Be Empty</string>
+
+
+    <!--  Component  -->
+    //Component
+    <string name="address_label">Address</string>
+    <string name="search_hint">Search by name or division</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="add_image">Add Image</string>
+    <string name="image_not_found">Image not found</string>
+    <string name="time_off_request">Time-Off Request</string>
+    <string name="live_attendance">Live Attendance</string>
+    <string name="leave_date_range">Start: %1$s - End: %2$s</string>
+    <string name="work_from_office">Work From Office</string>
+    <string name="work_from_home">Work From Home</string>
+    <string name="send">Send</string>
+    <string name="write_notes">Write Notes</string>
+    <string name="upload_image">Upload Image</string>
+    <string name="a_photo_of_you">A Photo of You</string>
+    <string name="photo_face_instruction">Please make sure your photo clearly shows your face</string>
+
+    <!--  Leave Application  -->
+    //Pengajuan cuti
+    <string name="leave_application">Leave Application</string>
+    <string name="full_name">Full Name</string>
+    <string name="full_name_placeholder">Enter Full Name</string>
+    <string name="head_program">Head Program</string>
+    <string name="division">Division</string>
+    <string name="leave_type">Leave Type</string>
+    <string name="description_optional">Description (Optional)</string>
+    <string name="phone_number">Phone Number</string>
+
+    <!--  Employees  -->
+    //Employees Fitur
+    <string name="employees">Employees</string>
+
+    <!--  Employees  -->
+    //Edit Profile Fitur
+    <string name="edit_profile">Edit Account Profile</string>
+    <string name="nip_nim_label">NIP / NIM</string>
+    <string name="nip_nim_placeholder">Enter NIP / NIM</string>
+    <string name="division_placeholder">Enter division</string>
+    <string name="position_label">Position (Optional)</string>
+    <string name="position_placeholder">Enter position</string>
+    <string name="start_contract_label">Start Contract</string>
+    <string name="end_contract_label">End Contract</string>
+    <string name="email_label">Email</string>
+    <string name="password_placeholder">Masukkan Password</string>
+    <string name="email_placeholder">Masukkan email</string>
+    <string name="phone_number_label">Nomor Telepon</string>
+    <string name="phone_number_placeholder">Masukkan nomor telepon</string>
+    <string name="edit_label">Edit</string>
+    <string name="cancel_label">Cancel</string>
+    <string name="history_label">History</string>
+
+    <!--  Detail Attendance  -->
+    //Detail Attendance Fitur
+    <string name="attendance_overview_title">Attendance Overview</string>
+    <string name="attendance_summary_title">Attendance Summary</string>
+
+    <!-- Login Screen -->
+    //Login Screen
+    <string name="sign_in_prompt">Sign In to Your Account Now and Start Exploring!</string>
+    <string name="hello_again">Hello Again!</string>
+    <string name="log_in">Sign In</string>
+
+
+    <!--  My Leave  -->
+    //My Leave
+    <string name="my_leave">My Leave</string>
+    <string name="time_off_request_empty">Your Time Off Request is Empty</string>
+    <string name="time_off_form_prompt">When you\'re filling the Time off request form,</string>
+    <string name="check_here_text">you can check here.</string>
+
+    <!--  Contact Us  -->
+    //Contact Us
+    <string name="contact_us">Contact Us</string>
+    <string name="contact_us_description">
+        Don’t hesitate to contact us whether you have a suggestion on our improvement, a complaint to discuss, or an issue to solve.
+    </string>
+    <string name="customer_support">Customer Support</string>
+    <string name="contact_number">Contact Number</string>
+    <string name="email_address">Email Address</string>
+    <string name="social_media">Sosial Media</string>
+    <string name="submit_question_label">Submit your Question</string>
+    <string name="faq_title">Frequently Asked Questions</string>
+
+    <!--  Profile Screen  -->
+    //Profile Screen
+    <string name="account_information">Account Information</string>
+    <string name="select_language">Select Language</string>
+    <string name="language_english">English</string>
+    <string name="language_indonesia">Indonesia</string>
+    <string name="language_label">Language</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="pay_slip">Pay Slip</string>
+    <string name="my_document">My Document</string>
+    <string name="setting">Setting</string>
+    <string name="language">Language</string>
+    <string name="faq">FAQ</string>
+    <string name="about_us">About Us</string>
+    <string name="logOut">Log Out</string>
+
+
+    <!--  TimeOff Screen  -->
+    //TimeOff Screen
+    <string name="time_off_requirement">Time Off - Requirement</string>
+
+</resources>

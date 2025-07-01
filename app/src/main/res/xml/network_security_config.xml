@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">50.0.0.30</domain>
+        <domain includeSubdomains="true">50.0.0.36</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">10.0.2.4</domain>
+        <domain includeSubdomains="true">172.20.10.9</domain>
+        <domain includeSubdomains="true">192.168.1.8</domain>
+        <domain includeSubdomains="true">50.0.0.251</domain>
+        <domain includeSubdomains="true">192.168.94.197</domain>
+        <domain includeSubdomains="true">192.168.1.54</domain>
+        <domain includeSubdomains="true">50.0.0.150</domain>
+        <domain includeSubdomains="true">50.0.0.75</domain>
+        <domain includeSubdomains="true">50.0.0.246</domain>
+        <domain includeSubdomains="true">50.0.0.238</domain>
+        <domain includeSubdomains="true">50.0.0.25</domain>
+        <domain includeSubdomains="true">51.0.0.237</domain>
+        <domain includeSubdomains="true">50.0.0.248</domain>
+        <domain includeSubdomains="true">50.0.0.231</domain>
+        <domain includeSubdomains="true">192.168.197.123</domain>
+        <domain includeSubdomains="true">192.168.197.197</domain>
+        <domain includeSubdomains="true">192.168.208.197</domain>
+    </domain-config>
+</network-security-config>

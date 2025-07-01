@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "571941000146",
+    "project_id": "notification-it",
+    "storage_bucket": "notification-it.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571941000146:android:2b562b2a5e9d42da386e0b",
+        "android_client_info": {
+          "package_name": "com.example.infinite_track"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQiNxWfpg32OJqeI4HTTiP4d8XFugEJWI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

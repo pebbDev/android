@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Infinite_Track</string>
+    <!-- Navigasi -->
+    <string name="bottom_menu_home">Beranda</string>
+    <string name="bottom_menu_inbox">Kotak Masuk</string>
+    <string name="bottom_menu_history">Riwayat</string>
+    <string name="bottom_menu_MyLeave">Cuti Saya</string>
+    <string name="bottom_menu_contact">Kontak</string>
+    <string name="bottom_menu_profile">Profil</string>
+    <string name="forgot_password">Lupa Kata Sandi?</string>
+    <string name="email_password_empty_error">Email dan Kata Sandi Tidak Boleh Kosong</string>
+
+    <!-- Beranda -->
+    <string name="see_more">Lihat Selengkapnya</string>
+    <string name="today_s_news">Berita Hari Ini</string>
+    <string name="attendance_history">Riwayat Kehadiran</string>
+    <string name="list_time_off">Daftar Permintaan Cuti</string>
+
+    <!--  Component  -->
+    //Component
+    <string name="address_label">Alamat</string>
+    <string name="search_hint">Cari berdasarkan nama atau divisi</string>
+    <string name="camera_permission_denied">Izin kamera ditolak</string>
+    <string name="add_image">Tambahkan Gambar</string>
+    <string name="image_not_found">Gambar tidak ditemukan</string>
+    <string name="time_off_request">Permintaan Cuti</string>
+    <string name="live_attendance">Kehadiran Langsung</string>
+    <string name="leave_date_range">Tanggal mulai cuti: %1$s - Tanggal akhir cuti: %2$s</string>
+    <string name="work_from_office">Kerja dari Kantor</string>
+    <string name="work_from_home">Kerja dari Rumah</string>
+    <string name="send">Kirim</string>
+    <string name="write_notes">Tulis Catatan</string>
+    <string name="upload_image">Unggah Gambar</string>
+    <string name="a_photo_of_you">Foto Anda</string>
+    <string name="photo_face_instruction">Pastikan foto Anda dengan jelas memperlihatkan wajah Anda</string>
+
+    <!--  Leave Application  -->
+    //Pengajuan cuti
+    <string name="leave_application">Aplikasi Cuti</string>
+    <string name="full_name">Nama Lengkap</string>
+    <string name="full_name_placeholder">Masukkan Nama Lengkap</string>
+    <string name="head_program">Kepala Program</string>
+    <string name="division">Divisi</string>
+    <string name="leave_type">Jenis Cuti</string>
+    <string name="description_optional">Deskripsi (Opsional)</string>
+    <string name="phone_number">Nomor Telepon</string>
+
+    <!--  Employees  -->
+    //Employees Fitur
+    <string name="employees">Karyawan</string>
+
+    <!--  Employees  -->
+    //Edit Profile Fitur
+    <string name="edit_profile">Ubah Profil</string>
+    <string name="nip_nim_label">NIP / NIM</string>
+    <string name="nip_nim_placeholder">Masukkan NIP / NIM</string>
+    <string name="division_placeholder">Masukkan divisi</string>
+    <string name="position_label">Posisi (Opsional)</string>
+    <string name="position_placeholder">Masukkan posisi</string>
+    <string name="start_contract_label">Mulai Kontrak</string>
+    <string name="end_contract_label">End Contract</string>
+    <string name="email_label">Email</string>
+    <string name="email_placeholder">Masukkan email</string>
+    <string name="phone_number_label">Phone Number</string>
+    <string name="phone_number_placeholder">Enter phone number</string>
+    <string name="password_placeholder">Enter Password</string>
+    <string name="edit_label">Ubah</string>
+    <string name="cancel_label">Batal</string>
+    <string name="history_label">Riwayat</string>
+
+    <!--  Detail Attendance  -->
+    //Detail Attendance Fitur
+    <string name="attendance_overview_title">Ikhtisar Kehadiran</string>
+    <string name="attendance_summary_title">Ringkasan Kehadiran</string>
+
+    <!-- Login Screen -->
+    //Login Screen
+    <string name="sign_in_prompt">Masuk ke Akun Anda Sekarang dan Mulai Menjelajah!</string>
+    <string name="hello_again">Halo Lagi!</string>
+    <string name="log_in">Masuk</string>
+
+
+    <!--  My Leave  -->
+    //My Leave
+    <string name="my_leave">Cuti Saya</string>
+    <string name="time_off_request_empty">Permintaan Cuti Anda Kosong</string>
+    <string name="time_off_form_prompt">Saat Anda mengisi formulir permintaan cuti,</string>
+    <string name="check_here_text">Anda dapat memeriksanya di sini.</string>
+
+    <!--  Contact Us  -->
+    //Contact Us
+    <string name="contact_us">Hubungi Kami</string>
+    <string name="contact_us_description">
+        Jangan ragu untuk menghubungi kami jika Anda memiliki saran untuk perbaikan, keluhan untuk dibahas, atau masalah untuk diselesaikan.
+    </string>
+    <string name="customer_support">Dukungan Pelanggan</string>
+    <string name="contact_number">Nomor Kontak</string>
+    <string name="email_address">Alamat Email</string>
+    <string name="social_media">Social Media</string>
+    <string name="faq_title">Frequently Asked Questions</string>
+    <string name="submit_question_label">Ajukan Pertanyaan Anda</string>
+
+    <!--  Profile Screen  -->
+    //Profile Screen
+    <string name="account_information">Informasi Akun</string>
+    <string name="select_language">Pilih Bahasa</string>
+    <string name="language_english">Inggris</string>
+    <string name="language_indonesia">Indonesia</string>
+    <string name="language_label">Bahasa</string>
+    <string name="save">Simpan</string>
+    <string name="cancel">Batal</string>
+    <string name="pay_slip">Slip Gaji</string>
+    <string name="my_document">Dokumen Saya</string>
+    <string name="setting">Pengaturan</string>
+    <string name="language">Bahasa</string>
+    <string name="faq">FAQ</string>
+    <string name="about_us">Tentang Kami</string>
+    <string name="logOut">Keluar</string>
+
+    <!--  TimeOff Screen  -->
+    //TimeOff Screen
+    <string name="time_off_requirement">Cuti - Persyaratan</string>
+</resources>

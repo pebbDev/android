@@ -1,0 +1,52 @@
+package com.example.infinite_track.data.soucre.network.retrofit
+
+import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
+import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
+import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
+import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
+import com.example.infinite_track.data.soucre.network.response.LoginResponse
+import com.example.infinite_track.data.soucre.network.response.LogoutResponse
+import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
+import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
+import retrofit2.http.*
+import javax.inject.Singleton
+
+@Singleton
+interface ApiService {
+    @POST("api/auth/login")
+    suspend fun login(@Body loginRequest: LoginRequest): LoginResponse
+
+    @GET("api/auth/me")
+    suspend fun getUserProfile(): LoginResponse
+
+    @POST("api/auth/logout")
+    suspend fun logout(): LogoutResponse
+
+    @POST("api/attendance/check-in")
+    suspend fun checkIn(
+        @Body request: AttendanceRequest
+    ): AttendanceResponse
+
+    @POST("api/attendance/checkout/{id_attendance}")
+    suspend fun checkOut(
+        @Path("id_attendance") attendanceId: Int
+    ): AttendanceResponse
+
+    @GET("api/attendance/status-today")
+    suspend fun getTodayStatus(): TodayStatusResponse
+
+    @GET("api/attendance/history")
+    suspend fun getAttendanceHistory(
+        @Query("period") period: String = "daily",
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 5
+    ): AttendanceHistoryResponse
+
+    @PATCH("api/users/{id}")
+    suspend fun updateUserProfile(
+        @Path("id") userId: Int,
+        @Body request: ProfileUpdateRequest
+    ): ProfileUpdateResponse
+
+}
