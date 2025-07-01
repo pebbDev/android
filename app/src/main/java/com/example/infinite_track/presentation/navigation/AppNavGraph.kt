@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.example.infinite_track.presentation.main.MainScreen
+import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.auth.LoginScreen
 import com.example.infinite_track.presentation.screen.splash.SplashScreen
 
@@ -41,5 +42,10 @@ fun NavGraphBuilder.appNavGraph(
     // Main graph - contains all authenticated screens
     composable(Screen.Home.route) {
         MainScreen(rootNavController = navController)
+    }
+
+    // Attendance Screen
+    composable(Screen.Attendance.route) {
+        AttendanceScreen(navController = navController)
     }
 }

@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.components.maps
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.infinite_track.R
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
@@ -39,7 +42,8 @@ import com.mapbox.maps.plugin.locationcomponent.location
 @SuppressLint("MissingPermission")
 @Composable
 fun AttendanceMap(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onMapReady: ((MapView) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -79,6 +83,8 @@ fun AttendanceMap(
             // Tampilkan peta Mapbox
             AndroidView(
                 factory = {
+                    // Mapbox access token sudah dikonfigurasi di AndroidManifest.xml
+                    // Tidak perlu set token lagi secara programmatic
                     MapView(it).apply {
                         mapView = this // Simpan referensi MapView
                         getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS)
@@ -87,6 +93,9 @@ fun AttendanceMap(
                         gestures.rotateEnabled = true
                         gestures.pinchToZoomEnabled = true
                         location.enabled = true
+
+                        // Panggil callback onMapReady jika tersedia
+                        onMapReady?.invoke(this)
                     }
                 },
                 modifier = modifier.fillMaxSize()

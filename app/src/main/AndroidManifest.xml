@@ -47,7 +47,7 @@
             android:value="AIzaSyDoyWQjJqxgX5T-_ZX0Q3f553hOxaCEw1w" />
         <meta-data
             android:name="com.mapbox.maps.AccessToken"
-            android:value="${MAPBOX_ACCESS_TOKEN}" />
+            android:value="${MAPBOX_PUBLIC_TOKEN}" />
 
         <activity
             android:name=".presentation.main.MainActivity"

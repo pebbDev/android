@@ -1,0 +1,144 @@
+{
+    "checksum": "63059f2152f150ac69e67c7585e03c067269489d62ae86512ca97aaba58188bd",
+    "data": {
+    "id": "7ff407bf-3176-4632-a766-e3d8c9eb286d",
+    "createdAt": 1751359516876,
+    "updatedAt": 1751359554845,
+    "title": "/unittests  Generate tests for RadioButtonWithT...",
+    "messages": [
+        {
+            "id": "fd8b7dfd-3563-42dc-8283-ee3945ada706",
+            "role": "user",
+            "content": [
+                {
+                    "type": "command",
+                    "commandName": "unittests"
+                },
+                {
+                    "type": "text",
+                    "text": " Generate tests for RadioButtonWithText method"
+                }
+            ],
+            "createdAt": 1751359516879,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "command",
+                                "attrs": {
+                                    "label": "unittests"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "/unittests"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": " Generate tests for RadioButtonWithText method"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "9cdc1e2c-5535-4b7d-8ce3-1891e1ce236f",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "I'll help you generate tests for the RadioButtonWithText method. Let me first search for this method in your codebase to understand its implementation."
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01DLMx6ALsuchBnhJaPycPh2",
+                    "title": "Fulltext search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Now let me examine the RadioButtonWithText implementation:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01Ey9APcFTfEHLNSpB4AxVr5",
+                    "statusText": "Viewed file",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/main/java/com/example/infinite_track/presentation/components/button/RadioButtonWithText.kt",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\button\\RadioButtonWithText.kt"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Now let me check if there are any existing tests for this component and understand the testing structure:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01TBoCnj5yHWbUiTxxUpR7bi",
+                    "title": "Fulltext search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me check for the test directory structure:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01Pt8atvGQzUv4ZbJ7Woc37v",
+                    "statusText": "Viewed folder",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/test",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\test"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01EAfHMr58fPzHX35jYRfZ1m",
+                    "statusText": "Viewing folder",
+                    "status": "IN_PROGRESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/test/java/com",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\test\\java\\com"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                }
+            ],
+            "context": {
+                "author": "Unit Test Agent",
+                "operationId": "70a682f9-92a3-46ad-ab85-df7ac480ad84"
+            },
+            "createdAt": 1751359519768,
+            "isInternal": false
+        }
+    ],
+    "isAgent": true,
+    "isUnitTestsAgent": true
+}
+}

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.presentation.theme.Purple_500
 
 /**
  * Komponen yang menggabungkan RadioButton dengan Text label.
@@ -44,13 +45,12 @@ fun RadioButtonWithText(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp) // Memastikan target sentuh minimal 48dp sesuai panduan Material
+            .height(35.dp)
             .toggleable(
                 value = selected,
-                onValueChange = { onClick() }, // Panggil onClick saat toggle
+                onValueChange = { onClick() },
                 role = Role.RadioButton
-            )
-            .padding(horizontal = 16.dp),
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -65,6 +65,7 @@ fun RadioButtonWithText(
         Text(
             text = text,
             style = body1,
+            color = Purple_500
         )
     }
 }

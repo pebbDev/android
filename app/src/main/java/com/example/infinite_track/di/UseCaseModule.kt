@@ -16,6 +16,7 @@ import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUs
 import com.example.infinite_track.domain.use_case.language.GetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.language.SetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
+import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import dagger.Module
 import dagger.Provides
@@ -91,5 +92,11 @@ object UseCaseModule {
     @Provides
     fun provideGetCurrentAddressUseCase(locationRepository: LocationRepository): GetCurrentAddressUseCase {
         return GetCurrentAddressUseCase(locationRepository)
+    }
+
+    // Provide the Get Current Coordinates Use Case
+    @Provides
+    fun provideGetCurrentCoordinatesUseCase(locationRepository: LocationRepository): GetCurrentCoordinatesUseCase {
+        return GetCurrentCoordinatesUseCase(locationRepository)
     }
 }

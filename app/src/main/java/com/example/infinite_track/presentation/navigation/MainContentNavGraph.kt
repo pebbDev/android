@@ -14,6 +14,7 @@ import com.example.infinite_track.presentation.screen.history.HistoryViewModel
 import com.example.infinite_track.presentation.screen.home.HomeScreen
 import com.example.infinite_track.presentation.screen.home.HomeViewModel
 import com.example.infinite_track.presentation.screen.home.details.DetailsMyAttendance
+import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.leave_request.my_leave.MyLeave
 import com.example.infinite_track.presentation.screen.leave_request.timeOff.TimeOffScreen
 import com.example.infinite_track.presentation.screen.profile.ProfileScreen
@@ -101,6 +102,11 @@ fun NavGraphBuilder.mainContentNavGraph(
                 onBackClick = { navController.popBackStack() }
             )
         }
+    }
+
+    // Attendance Screen
+    composable(Screen.Attendance.route) {
+        AttendanceScreen(navController = navController)
     }
 
     // Time Off Related Screens

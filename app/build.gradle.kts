@@ -35,7 +35,7 @@ android {
         }
 
         // Add Mapbox access token to manifest
-        manifestPlaceholders["MAPBOX_ACCESS_TOKEN"] = mapboxAccessToken
+        manifestPlaceholders["MAPBOX_PUBLIC_TOKEN"] = mapboxAccessToken
     }
 
     buildTypes {
@@ -78,10 +78,6 @@ android {
 dependencies {
 
     implementation(libs.lottie)
-//    implementation("com.airbnb.android:lottie:6.3.0") // Lottie Compose
-//    com.airbnb.android:lottie
-//    implementation(libs.dotlottie.android)
-
 
     implementation(libs.androidx.core.splashscreen)
 

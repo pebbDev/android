@@ -61,4 +61,34 @@ class LocationRepositoryImpl @Inject constructor(
             continuation.resume(Result.failure(e))
         }
     }
+
+    /**
+     * Gets the current location coordinates
+     * @return Result containing Pair of latitude and longitude or an error
+     */
+    @SuppressLint("MissingPermission")
+    override suspend fun getCurrentCoordinates(): Result<Pair<Double, Double>> = suspendCancellableCoroutine { continuation ->
+        try {
+            val locationTask = fusedLocationProviderClient.lastLocation
+
+            locationTask.addOnSuccessListener { location ->
+                if (location != null) {
+                    continuation.resume(Result.success(Pair(location.latitude, location.longitude)))
+                } else {
+                    continuation.resume(Result.failure(Exception("Unable to get current location")))
+                }
+            }
+
+            locationTask.addOnFailureListener { exception ->
+                continuation.resume(Result.failure(exception))
+            }
+
+            // Register cancellation handler
+            continuation.invokeOnCancellation {
+                // Handle cancellation if needed
+            }
+        } catch (e: Exception) {
+            continuation.resume(Result.failure(e))
+        }
+    }
 }
