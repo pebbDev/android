@@ -74,37 +74,51 @@ fun AttendanceScreen(
         bottomSheetState = bottomSheetState
     )
 
-    // Handle map events from ViewModel dengan animasi yang lebih smooth
+    // Handle map events from ViewModel with enhanced camera control
     LaunchedEffect(Unit) {
         viewModel.mapEvent.collect { event ->
             when (event) {
                 is AttendanceViewModel.MapEvent.AnimateToLocation -> {
                     mapViewInstance?.let { mapView ->
-                        // Gunakan flyTo untuk animasi yang lebih smooth ke lokasi terkini
+                        // Use the enhanced event data with Point and zoomLevel
                         val cameraOptions = CameraOptions.Builder()
-                            .center(Point.fromLngLat(event.longitude, event.latitude))
-                            .zoom(18.0) // Zoom lebih dekat untuk fokus yang akurat
-                            .pitch(0.0) // Pastikan top-down view
-                            .bearing(0.0) // North-facing orientation
+                            .center(event.point)
+                            .zoom(event.zoomLevel)
+                            .pitch(0.0)
+                            .bearing(0.0)
                             .build()
 
                         mapView.mapboxMap.flyTo(
                             cameraOptions,
                             MapAnimationOptions.Builder()
-                                .duration(1200L) // Sedikit lebih cepat untuk responsivitas
+                                .duration(1200L)
                                 .build()
+                        )
+
+                        android.util.Log.d(
+                            "AttendanceScreen",
+                            "Camera animated to ${event.point.latitude()}, ${event.point.longitude()} with zoom ${event.zoomLevel}"
                         )
                     }
                 }
 
                 is AttendanceViewModel.MapEvent.ShowLocationError -> {
-                    // Handle error - bisa ditambahkan snackbar atau toast
+                    // Handle error - could add snackbar or toast
                     android.util.Log.e(
                         "AttendanceScreen",
                         "Failed to get current location for focus"
                     )
                 }
             }
+        }
+    }
+
+    // Start location updates when UI is ready and data is loaded successfully
+    LaunchedEffect(uiState.uiState) {
+        if (uiState.uiState is UiState.Success) {
+            // Only start location updates after data is loaded and UI is ready
+            viewModel.startLocationUpdates()
+            android.util.Log.d("AttendanceScreen", "Location updates started after UI ready")
         }
     }
 
@@ -249,10 +263,12 @@ fun AttendanceScreen(
                 }
             ) { paddingValues ->
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // Fullscreen Map dengan data dari ViewModel - Fixed layout
+                    // Fullscreen Map dengan data dari ViewModel - Updated with WFO and WFH locations
                     AttendanceMap(
                         modifier = Modifier.fillMaxSize(),
-                        targetLocation = uiState.targetLocationMarker,
+                        wfoLocation = uiState.wfoLocation,        // WFO location
+                        wfhLocation = uiState.wfhLocation,        // WFH location
+                        targetLocation = uiState.targetLocationMarker, // Keep for backward compatibility
                         currentUserLocation = uiState.currentUserLatitude?.let { lat ->
                             uiState.currentUserLongitude?.let { lng ->
                                 Point.fromLngLat(lng, lat)
@@ -261,6 +277,8 @@ fun AttendanceScreen(
                         onMarkerClick = { location -> viewModel.onMarkerClicked(location) },
                         onMapReady = { mapView ->
                             mapViewInstance = mapView
+                            // Notify ViewModel that map is ready for initial focus
+                            viewModel.onMapReady()
                         }
                     )
 

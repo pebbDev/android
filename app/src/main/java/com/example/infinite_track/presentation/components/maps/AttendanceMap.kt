@@ -31,10 +31,12 @@ import com.mapbox.maps.plugin.locationcomponent.location
 @Composable
 fun AttendanceMap(
     modifier: Modifier = Modifier,
-    targetLocation: Location? = null,
+    wfoLocation: Location? = null,        // Work From Office location
+    wfhLocation: Location? = null,        // Work From Home location
+    targetLocation: Location? = null,     // Keep for backward compatibility
     currentUserLocation: Point? = null,
     onMarkerClick: (Location) -> Unit = {},
-    onMapReady: ((MapView) -> Unit)? = null
+    onMapReady: (MapView) -> Unit = {}    // Added callback for when map is ready
 ) {
     var mapView: MapView? by remember { mutableStateOf(null) }
 
@@ -45,50 +47,64 @@ fun AttendanceMap(
         )
     )
 
-    // Effect to update markers when targetLocation changes
-    LaunchedEffect(targetLocation, mapView) {
-        if (targetLocation != null && mapView != null) {
-            // Add a small delay to ensure map is fully initialized
-            kotlinx.coroutines.delay(500)
-
+    // Effect to handle initial camera positioning - Auto-fit to show both locations
+    LaunchedEffect(wfoLocation, wfhLocation, targetLocation, mapView) {
+        if (mapView != null) {
             val mapboxMap = mapView!!.mapboxMap
 
-            // Wait for map style to be loaded and add markers
             mapboxMap.getStyle { style ->
-                MapUtils.addMarkersAndRadius(mapView!!, targetLocation, onMarkerClick)
+                val locations = listOfNotNull(wfoLocation, wfhLocation, targetLocation)
+
+                if (locations.isNotEmpty()) {
+                    if (locations.size == 1) {
+                        // Single location - focus on it
+                        val location = locations.first()
+                        val centerPoint = Point.fromLngLat(location.longitude, location.latitude)
+
+                        mapboxMap.flyTo(
+                            CameraOptions.Builder()
+                                .center(centerPoint)
+                                .zoom(16.0)
+                                .pitch(0.0)
+                                .bearing(0.0)
+                                .build(),
+                            MapAnimationOptions.Builder()
+                                .duration(1000L)
+                                .build()
+                        )
+                    } else {
+                        // Multiple locations - fit bounds to show all
+                        MapUtils.fitMapToBounds(mapView!!, locations)
+                    }
+
+                    android.util.Log.d(
+                        "AttendanceMap",
+                        "Camera positioned to show ${locations.size} location(s)"
+                    )
+                }
             }
         }
     }
 
-    // Effect to handle initial camera positioning - Focus on Target Location by default
-    LaunchedEffect(targetLocation, mapView) {
-        if (mapView != null && targetLocation != null) {
-            val mapboxMap = mapView!!.mapboxMap
+    // Reactive effect to update all map annotations when any location data changes
+    LaunchedEffect(wfoLocation, wfhLocation, currentUserLocation, mapView) {
+        mapView?.let { map ->
+            // Small delay to ensure map is ready
+            kotlinx.coroutines.delay(300)
 
-            // Wait for map style to be fully loaded
-            mapboxMap.getStyle { style ->
-                // Default focus ke target location untuk attendance checking
-                val centerPoint =
-                    Point.fromLngLat(targetLocation.longitude, targetLocation.latitude)
+            // Use the unified MapUtils function to update all annotations
+            MapUtils.updateMapAnnotations(
+                mapView = map,
+                wfoLocation = wfoLocation,
+                wfhLocation = wfhLocation,
+                currentUserLocation = currentUserLocation,
+                onMarkerClick = onMarkerClick
+            )
 
-                // Set initial camera position dengan fokus ke target location
-                mapboxMap.flyTo(
-                    CameraOptions.Builder()
-                        .center(centerPoint)
-                        .zoom(16.0) // Optimal zoom untuk melihat area sekitar target
-                        .pitch(0.0) // Ensure top-down view for accuracy
-                        .bearing(0.0) // North-facing orientation
-                        .build(),
-                    MapAnimationOptions.Builder()
-                        .duration(1000L)
-                        .build()
-                )
-
-                android.util.Log.d(
-                    "AttendanceMap",
-                    "Default camera positioned at target location: ${centerPoint.latitude()}, ${centerPoint.longitude()}"
-                )
-            }
+            android.util.Log.d(
+                "AttendanceMap",
+                "Map annotations updated - WFO: ${wfoLocation != null}, WFH: ${wfhLocation != null}, User: ${currentUserLocation != null}"
+            )
         }
     }
 

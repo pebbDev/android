@@ -8,10 +8,12 @@ import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
+import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.utils.UiState
+import com.mapbox.geojson.Point
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -28,12 +30,14 @@ import javax.inject.Inject
 
 /**
  * Simplified state object focused on reactive geofence integration
- * Removed manual distance calculation and GPS tracking logic
+ * Now supports both WFO and WFH location markers
  */
 data class AttendanceScreenState(
     val uiState: UiState<Unit> = UiState.Loading,
     val todayStatus: TodayStatus? = null,
-    val targetLocation: Location? = null,
+    val targetLocation: Location? = null, // Keep for backward compatibility
+    val wfoLocation: Location? = null,    // Work From Office location
+    val wfhLocation: Location? = null,    // Work From Home location
     val currentUserAddress: String = "",
     val currentUserLatitude: Double? = null,
     val currentUserLongitude: Double? = null,
@@ -64,14 +68,15 @@ class AttendanceViewModel @Inject constructor(
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
     private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
     private val attendancePreference: AttendancePreference,
-    private val geofenceManager: GeofenceManager
+    private val geofenceManager: GeofenceManager,
+    private val getLoggedInUserUseCase: GetLoggedInUserUseCase
 ) : ViewModel() {
 
     /**
      * Sealed class for map events sent to UI
      */
     sealed class MapEvent {
-        data class AnimateToLocation(val latitude: Double, val longitude: Double) : MapEvent()
+        data class AnimateToLocation(val point: Point, val zoomLevel: Double) : MapEvent()
         object ShowLocationError : MapEvent()
     }
 
@@ -117,18 +122,18 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Initialize data by fetching today status and starting display updates
+     * Initialize data by fetching both WFO and WFH locations
      */
     private fun initializeData() {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(uiState = UiState.Loading)
 
-                // Fetch today status first
+                // Fetch both locations concurrently
                 fetchTodayStatus()
+                fetchUserHomeLocation()
 
-                // Start location updates for display purposes only
-                startDisplayLocationUpdates()
+                // Don't start location updates automatically - let UI control this
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing data", e)
@@ -140,7 +145,7 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fetch today status and setup geofence if target location exists
+     * Fetch today status to get WFO location
      */
     private suspend fun fetchTodayStatus() {
         try {
@@ -153,21 +158,19 @@ class AttendanceViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     todayStatus = todayStatus,
                     targetLocation = todayStatus.activeLocation,
+                    wfoLocation = todayStatus.activeLocation, // WFO location from today status
                     targetLocationMarker = todayStatus.activeLocation,
                     isBookingEnabled = isBookingEnabled,
                     selectedWorkMode = selectedMode,
                     uiState = UiState.Success(Unit)
                 )
 
-                // Setup geofence for target location (validation purposes)
+                // Setup geofence for active location (validation purposes)
                 todayStatus.activeLocation?.let { location ->
                     setupGeofence(location)
                 }
 
-                Log.d(
-                    TAG,
-                    "State updated with today status. Target location: ${todayStatus.activeLocation}"
-                )
+                Log.d(TAG, "WFO location updated: ${todayStatus.activeLocation}")
 
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to fetch today status", exception)
@@ -180,6 +183,40 @@ class AttendanceViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 uiState = UiState.Error("Unexpected error: ${e.message}")
             )
+        }
+    }
+
+    /**
+     * Fetch user home location from logged in user data
+     */
+    private suspend fun fetchUserHomeLocation() {
+        try {
+            getLoggedInUserUseCase().collect { user ->
+                Log.d(TAG, "User data fetched successfully")
+
+                // Extract WFH location from user profile if available
+                val wfhLocation = if (user?.latitude != null && user.longitude != null) {
+                    Location(
+                        locationId = user.id, // Use user ID as location ID
+                        latitude = user.latitude,
+                        longitude = user.longitude,
+                        radius = user.radius ?: 100, // Default 100m radius if not specified
+                        description = user.locationDescription ?: "Work From Home Location",
+                        category = user.locationCategoryName ?: "Home"
+                    )
+                } else {
+                    null // No home location data available
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    wfhLocation = wfhLocation
+                )
+
+                Log.d(TAG, "WFH location updated: $wfhLocation")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Unexpected error in fetchUserHomeLocation", e)
+            // Continue without WFH location
         }
     }
 
@@ -256,6 +293,37 @@ class AttendanceViewModel @Inject constructor(
     fun onWorkModeSelected(mode: String) {
         Log.d(TAG, "Work mode selected: $mode")
         _uiState.value = _uiState.value.copy(selectedWorkMode = mode)
+
+        // Auto-focus camera to appropriate location based on work mode
+        viewModelScope.launch {
+            when (mode) {
+                "Work From Home", "WFH" -> {
+                    _uiState.value.wfhLocation?.let { wfhLocation ->
+                        val wfhPoint = Point.fromLngLat(wfhLocation.longitude, wfhLocation.latitude)
+                        _mapEvent.send(
+                            MapEvent.AnimateToLocation(
+                                point = wfhPoint,
+                                zoomLevel = 15.0
+                            )
+                        )
+                        Log.d(TAG, "Auto-focusing camera to WFH location")
+                    }
+                }
+
+                "Work From Office", "WFO" -> {
+                    _uiState.value.wfoLocation?.let { wfoLocation ->
+                        val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
+                        _mapEvent.send(
+                            MapEvent.AnimateToLocation(
+                                point = wfoPoint,
+                                zoomLevel = 15.0
+                            )
+                        )
+                        Log.d(TAG, "Auto-focusing camera to WFO location")
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -317,8 +385,8 @@ class AttendanceViewModel @Inject constructor(
                     // Send map animation event
                     _mapEvent.send(
                         MapEvent.AnimateToLocation(
-                            latitude = latitude,
-                            longitude = longitude
+                            point = Point.fromLngLat(longitude, latitude),
+                            zoomLevel = 15.0 // Default zoom level
                         )
                     )
 
@@ -332,6 +400,37 @@ class AttendanceViewModel @Inject constructor(
                 Log.e(TAG, "Unexpected error in onFocusLocationClicked", e)
             }
         }
+    }
+
+    /**
+     * Called when the map is ready to receive commands
+     * This will trigger initial camera focus to WFO location
+     */
+    fun onMapReady() {
+        Log.d(TAG, "Map is ready, focusing to WFO location")
+        viewModelScope.launch {
+            _uiState.value.wfoLocation?.let { wfoLocation ->
+                val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
+                _mapEvent.send(
+                    MapEvent.AnimateToLocation(
+                        point = wfoPoint,
+                        zoomLevel = 15.0
+                    )
+                )
+                Log.d(TAG, "Initial camera focus sent to WFO location")
+            } ?: run {
+                Log.w(TAG, "WFO location not available for initial focus")
+            }
+        }
+    }
+
+    /**
+     * Start location updates for display purposes
+     * This should be called by UI when location permissions are granted
+     */
+    fun startLocationUpdates() {
+        Log.d(TAG, "Starting location updates for display")
+        startDisplayLocationUpdates()
     }
 
     override fun onCleared() {
