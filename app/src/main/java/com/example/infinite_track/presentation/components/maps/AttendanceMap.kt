@@ -2,39 +2,27 @@ package com.example.infinite_track.presentation.components.maps
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.example.infinite_track.R
+import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.utils.MapUtils
+import com.example.infinite_track.utils.PermissionUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.android.gms.location.LocationServices
+import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
+import com.mapbox.maps.plugin.animation.MapAnimationOptions
+import com.mapbox.maps.plugin.animation.flyTo
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.location
 
@@ -43,10 +31,11 @@ import com.mapbox.maps.plugin.locationcomponent.location
 @Composable
 fun AttendanceMap(
     modifier: Modifier = Modifier,
+    targetLocation: Location? = null,
+    currentUserLocation: Point? = null,
+    onMarkerClick: (Location) -> Unit = {},
     onMapReady: ((MapView) -> Unit)? = null
 ) {
-    val context = LocalContext.current
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var mapView: MapView? by remember { mutableStateOf(null) }
 
     val locationPermissionsState = rememberMultiplePermissionsState(
@@ -56,38 +45,61 @@ fun AttendanceMap(
         )
     )
 
-    // Logika UI berdasarkan status izin
-    when {
-        // 1. Jika semua izin diberikan
-        locationPermissionsState.allPermissionsGranted -> {
-            LaunchedEffect(Unit) {
-                // Ambil lokasi saat ini satu kali
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    if (location != null && mapView != null) {
-                        // Pusatkan kamera ke lokasi pengguna
-                        mapView?.getMapboxMap()?.setCamera(
-                            CameraOptions.Builder()
-                                .center(
-                                    com.mapbox.geojson.Point.fromLngLat(
-                                        location.longitude,
-                                        location.latitude
-                                    )
-                                )
-                                .zoom(14.0)
-                                .build()
-                        )
-                    }
-                }
-            }
+    // Effect to update markers when targetLocation changes
+    LaunchedEffect(targetLocation, mapView) {
+        if (targetLocation != null && mapView != null) {
+            // Add a small delay to ensure map is fully initialized
+            kotlinx.coroutines.delay(500)
 
+            val mapboxMap = mapView!!.mapboxMap
+
+            // Wait for map style to be loaded and add markers
+            mapboxMap.getStyle { style ->
+                MapUtils.addMarkersAndRadius(mapView!!, targetLocation, onMarkerClick)
+            }
+        }
+    }
+
+    // Effect to handle initial camera positioning - Focus on Target Location by default
+    LaunchedEffect(targetLocation, mapView) {
+        if (mapView != null && targetLocation != null) {
+            val mapboxMap = mapView!!.mapboxMap
+
+            // Wait for map style to be fully loaded
+            mapboxMap.getStyle { style ->
+                // Default focus ke target location untuk attendance checking
+                val centerPoint =
+                    Point.fromLngLat(targetLocation.longitude, targetLocation.latitude)
+
+                // Set initial camera position dengan fokus ke target location
+                mapboxMap.flyTo(
+                    CameraOptions.Builder()
+                        .center(centerPoint)
+                        .zoom(16.0) // Optimal zoom untuk melihat area sekitar target
+                        .pitch(0.0) // Ensure top-down view for accuracy
+                        .bearing(0.0) // North-facing orientation
+                        .build(),
+                    MapAnimationOptions.Builder()
+                        .duration(1000L)
+                        .build()
+                )
+
+                android.util.Log.d(
+                    "AttendanceMap",
+                    "Default camera positioned at target location: ${centerPoint.latitude()}, ${centerPoint.longitude()}"
+                )
+            }
+        }
+    }
+
+    when {
+        locationPermissionsState.allPermissionsGranted -> {
             // Tampilkan peta Mapbox
             AndroidView(
                 factory = {
-                    // Mapbox access token sudah dikonfigurasi di AndroidManifest.xml
-                    // Tidak perlu set token lagi secara programmatic
                     MapView(it).apply {
                         mapView = this // Simpan referensi MapView
-                        getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS)
+                        mapboxMap.loadStyle(Style.MAPBOX_STREETS)
                         gestures.pitchEnabled = true
                         gestures.scrollEnabled = true
                         gestures.rotateEnabled = true
@@ -102,17 +114,15 @@ fun AttendanceMap(
             )
         }
 
-        // 2. Jika izin ditolak (tapi masih bisa diminta lagi)
         locationPermissionsState.shouldShowRationale -> {
-            PermissionRationale(
+            PermissionUtils.PermissionRationale(
                 text = "Aplikasi ini membutuhkan izin lokasi untuk menampilkan peta dan memvalidasi absensi Anda.",
                 onRequestPermission = { locationPermissionsState.launchMultiplePermissionRequest() }
             )
         }
 
-        // 3. Jika izin ditolak permanen atau kondisi awal
         else -> {
-            PermissionRationale(
+            PermissionUtils.PermissionRationale(
                 text = "Izin lokasi diperlukan untuk fitur ini. Silakan aktifkan izin di pengaturan aplikasi.",
                 onRequestPermission = { locationPermissionsState.launchMultiplePermissionRequest() }
             )
@@ -120,41 +130,8 @@ fun AttendanceMap(
     }
 }
 
-@Composable
-private fun PermissionRationale(
-    text: String,
-    onRequestPermission: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.DarkGray)
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = text,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onRequestPermission) {
-                Text("Minta Izin")
-            }
-        }
-    }
-}
-
-
 @Preview(showBackground = true)
 @Composable
 fun AttendanceMapPreview() {
-    // Preview akan menampilkan salah satu state dari permission rationale.
-    // Menampilkan peta asli di preview bisa sangat berat.
-    PermissionRationale(
-        text = "Izin lokasi diperlukan untuk fitur ini.",
-        onRequestPermission = {}
-    )
+    AttendanceMap()
 }

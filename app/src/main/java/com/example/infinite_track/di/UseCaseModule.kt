@@ -2,11 +2,14 @@ package com.example.infinite_track.di
 
 import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
+import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
+import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
+import com.example.infinite_track.domain.use_case.attendance.ValidateLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
@@ -98,5 +101,17 @@ object UseCaseModule {
     @Provides
     fun provideGetCurrentCoordinatesUseCase(locationRepository: LocationRepository): GetCurrentCoordinatesUseCase {
         return GetCurrentCoordinatesUseCase(locationRepository)
+    }
+
+    // Provide the Get Today Status Use Case
+    @Provides
+    fun provideGetTodayStatusUseCase(attendanceRepository: AttendanceRepository): GetTodayStatusUseCase {
+        return GetTodayStatusUseCase(attendanceRepository)
+    }
+
+    // Provide the Validate Location Use Case
+    @Provides
+    fun provideValidateLocationUseCase(): ValidateLocationUseCase {
+        return ValidateLocationUseCase()
     }
 }

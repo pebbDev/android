@@ -8,61 +8,150 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.presentation.core.headline3
-import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 /**
- * Komponen untuk menampilkan informasi lokasi dengan ikon, judul, dan alamat.
+ * Komponen untuk menampilkan informasi lokasi dengan subtitle dan detail lengkap.
+ */
+@Composable
+fun LocationInfoSection(
+    targetLocationInfo: TargetLocationInfo?,
+    currentLocationAddress: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Target Location Section
+        targetLocationInfo?.let { targetInfo ->
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Subtitle: Lokasi Target
+                Text(
+                    text = "Lokasi Target",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black.copy(alpha = 0.8f)
+                )
+
+                // Location Info Row dengan data dari API
+                LocationInfoRow(
+                    icon = Icons.Default.LocationOn,
+                    primaryText = targetInfo.description, // Description dari API
+                    secondaryText = targetInfo.locationName // Nama lokasi dari koordinat API
+                )
+            }
+        }
+
+        // Current Location Section
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Subtitle: Lokasi Anda Saat Ini
+            Text(
+                text = "Lokasi Anda Saat Ini",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black.copy(alpha = 0.8f)
+            )
+
+            // Current Location Info Row
+            LocationInfoRow(
+                icon = Icons.Default.MyLocation,
+                primaryText = currentLocationAddress,
+                secondaryText = null // Tidak ada secondary text untuk lokasi saat ini
+            )
+        }
+    }
+}
+
+/**
+ * Komponen individu untuk menampilkan informasi lokasi dengan ikon dan teks.
  *
  * @param icon Ikon yang akan ditampilkan di sebelah kiri
- * @param title Judul lokasi
- * @param address Alamat lengkap lokasi
+ * @param primaryText Teks utama (description/address)
+ * @param secondaryText Teks sekunder opsional (nama lokasi)
  */
 @Composable
 fun LocationInfoRow(
     icon: ImageVector,
-    title: String,
-    address: String,
+    primaryText: String,
+    secondaryText: String? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = title,
-            modifier = Modifier.size(24.dp)
+            contentDescription = "Location Icon",
+            modifier = Modifier.size(24.dp),
+            tint = Color.Black.copy(alpha = 0.6f)
         )
 
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
+            // Primary text (description/address)
             Text(
-                text = title,
-                style = headline3
+                text = primaryText,
+                style = body1,
+                color = Color.Black.copy(alpha = 0.8f),
+                maxLines = 1, // Ubah dari 1 ke 2 untuk text yang lebih panjang
+                overflow = TextOverflow.Ellipsis
             )
 
-            Text(
-                text = address,
-                style = headline4,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            // Secondary text (location name) jika ada
+            secondaryText?.let { secondary ->
+                Text(
+                    text = secondary,
+                    fontSize = 12.sp,
+                    color = Color.Black.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LocationInfoSectionPreview() {
+    Infinite_TrackTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Preview dengan target location info
+            LocationInfoSection(
+                targetLocationInfo = TargetLocationInfo(
+                    description = "Kantor Pusat PT. Technology Indonesia",
+                    locationName = "Gedung Cyber 2, Kuningan"
+                ),
+                currentLocationAddress = "Jl. Kemang Raya No. 123, Jakarta Selatan, DKI Jakarta"
             )
         }
     }
@@ -78,14 +167,13 @@ private fun LocationInfoRowPreview() {
         ) {
             LocationInfoRow(
                 icon = Icons.Default.LocationOn,
-                title = "Target Location",
-                address = "Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta"
+                primaryText = "Kantor Pusat PT. Technology Indonesia",
+                secondaryText = "Gedung Cyber 2, Kuningan"
             )
 
             LocationInfoRow(
-                icon = Icons.Default.LocationOn,
-                title = "Current Location",
-                address = "Jl. Thamrin No. 456, Jakarta Pusat, DKI Jakarta"
+                icon = Icons.Default.MyLocation,
+                primaryText = "Jl. Kemang Raya No. 123, Jakarta Selatan, DKI Jakarta"
             )
         }
     }

@@ -56,7 +56,8 @@ fun StatefulButton(
                 enabled = enabled,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.elevatedButtonColors(
-                    containerColor = Blue_500
+                    containerColor = Blue_500,
+                    contentColor = Color.White
                 )
             ) {
                 Text(text)
@@ -89,7 +90,10 @@ fun StatefulButton(
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = stateColor // Warna teks saat unselected
                     ),
-                    border = BorderStroke(1.dp, if (enabled) stateColor else stateColor.copy(alpha = 0.5f))
+                    border = BorderStroke(
+                        1.dp,
+                        if (enabled) stateColor else stateColor.copy(alpha = 0.5f)
+                    )
                 ) {
                     Text(text)
                 }
@@ -116,15 +120,27 @@ fun StatefulButton_Previews() {
 
             Text("Outlined (Unselected)", style = MaterialTheme.typography.titleMedium)
             StatefulButton(text = "Outlined Default", style = ButtonStyle.Outlined, onClick = {})
-            StatefulButton(text = "Success State", style = ButtonStyle.Outlined, stateType = ButtonStateType.Success, onClick = {})
-            StatefulButton(text = "Warning State", style = ButtonStyle.Outlined, stateType = ButtonStateType.Warning, onClick = {})
-            StatefulButton(text = "Error State", style = ButtonStyle.Outlined, stateType = ButtonStateType.Error, onClick = {})
+            StatefulButton(
+                text = "Success State",
+                style = ButtonStyle.Outlined,
+                stateType = ButtonStateType.Success,
+                onClick = {})
+            StatefulButton(
+                text = "Warning State",
+                style = ButtonStyle.Outlined,
+                stateType = ButtonStateType.Warning,
+                onClick = {})
+            StatefulButton(
+                text = "Error State",
+                style = ButtonStyle.Outlined,
+                stateType = ButtonStateType.Error,
+                onClick = {})
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text("Outlined (Selected) - Toggle Me", style = MaterialTheme.typography.titleMedium)
             StatefulButton(
-                text = if(isSelected) "Selected (Success)" else "Unselected (Success)",
+                text = if (isSelected) "Selected (Success)" else "Unselected (Success)",
                 style = ButtonStyle.Outlined,
                 stateType = ButtonStateType.Success,
                 isSelected = isSelected,

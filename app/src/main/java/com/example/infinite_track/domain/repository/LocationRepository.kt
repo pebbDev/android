@@ -16,3 +16,4 @@ interface LocationRepository {
      */
     suspend fun getCurrentCoordinates(): Result<Pair<Double, Double>>
 }
+

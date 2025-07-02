@@ -1,7 +1,7 @@
 package com.example.infinite_track.presentation.screen.attendance.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -17,7 +17,7 @@ fun AttendanceTopBar(
 ) {
     DualIconButton(
         modifier = modifier,
-        leftIcon = Icons.Default.ArrowBack,
+        leftIcon = Icons.AutoMirrored.Filled.ArrowBack,
         rightIcon = Icons.Default.LocationOn,
         onLeftClick = onBackClicked,
         onRightClick = onFocusLocationClicked,
