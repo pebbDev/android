@@ -9,7 +9,6 @@ import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
-import com.example.infinite_track.domain.use_case.attendance.ValidateLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
@@ -107,11 +106,5 @@ object UseCaseModule {
     @Provides
     fun provideGetTodayStatusUseCase(attendanceRepository: AttendanceRepository): GetTodayStatusUseCase {
         return GetTodayStatusUseCase(attendanceRepository)
-    }
-
-    // Provide the Validate Location Use Case
-    @Provides
-    fun provideValidateLocationUseCase(): ValidateLocationUseCase {
-        return ValidateLocationUseCase()
     }
 }

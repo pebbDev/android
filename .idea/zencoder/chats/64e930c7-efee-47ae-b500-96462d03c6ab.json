@@ -1,0 +1,387 @@
+{
+    "checksum": "b16297a58294f687acfe30f8a4616a5ee14f410b8ea0c0f8bd38cb10dae6d66b",
+    "data": {
+    "id": "64e930c7-efee-47ae-b500-96462d03c6ab",
+    "createdAt": 1751437376052,
+    "updatedAt": 1751437510924,
+    "title": "MapEvent Class Unit Tests",
+    "messages": [
+        {
+            "id": "09a2c443-81c2-411f-acdb-105936254695",
+            "role": "user",
+            "content": [
+                {
+                    "type": "command",
+                    "commandName": "unittests"
+                },
+                {
+                    "type": "text",
+                    "text": " Generate tests for MapEvent class"
+                }
+            ],
+            "createdAt": 1751437376062,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "command",
+                                "attrs": {
+                                    "label": "unittests"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "/unittests"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": " Generate tests for MapEvent class"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "e36b5b4d-572f-42f1-a8f6-b3a846a85bce",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "I'll help you generate tests for the MapEvent class. Let me first locate the MapEvent class and understand its structure, then examine the existing test patterns in your project."
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_0183HNrPm2jqRPuNoseR58x3",
+                    "title": "File search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me search more broadly for \"Event\" classes to see if there are similar classes:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_019A7iDWwx7BxAV9hvQPWFUn",
+                    "title": "File search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me search for \"Map\" classes to find the MapEvent class:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01KERQJZcQhhZ3EXbMijus4B",
+                    "title": "File search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me try a full-text search for \"MapEvent\":"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_019pqAMeJMsNW459HvFkKKKq",
+                    "title": "Fulltext search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Great! I found the MapEvent class. Let me examine it in detail:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_011uiKKVPEgHkW8WWwBS2XNX",
+                    "statusText": "Viewed file",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/main/java/com/example/infinite_track/presentation/screen/attendance/AttendanceViewModel.kt",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\attendance\\AttendanceViewModel.kt"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Now let me check the existing test structure to understand the testing patterns:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01HxBqEtt188uxH5kSSGQWPa",
+                    "statusText": "Viewed folder",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": ".",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\."
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01QmyhHx8SJEFeisnRBcTkDX",
+                    "statusText": "Viewed folder",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me check the test directory structure:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_018SJ8BfXWGK35iXZVYdz8KJ",
+                    "statusText": "Viewed folder",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/test",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\test"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01SpAVHbCqQk4TvanzCZ7u1U",
+                    "statusText": "Viewed folder",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/test/java",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\test\\java"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01Vv11uvJXXixcnyM34qVinf",
+                    "title": "File search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me examine the existing unit test to understand the testing framework:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01CjjAKG52i8cyejTHXVYuPr",
+                    "statusText": "Viewed file",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/test/java/com/example/infinite_track/ExampleUnitTest.kt",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\test\\java\\com\\example\\infinite_track\\ExampleUnitTest.kt"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me also check the build.gradle.kts to see what testing dependencies are available:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01Lj5GvrYzwGjrq1J8AWBtrJ",
+                    "statusText": "Viewed file",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/build.gradle.kts",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\build.gradle.kts"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Now let me look at the full MapEvent implementation and its usage:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01NmpEK9gVvKposV6d6VfYaL",
+                    "statusText": "Viewed file",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/main/java/com/example/infinite_track/presentation/screen/attendance/AttendanceViewModel.kt",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\attendance\\AttendanceViewModel.kt"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Let me see how MapEvent is used in the ViewModel:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01L8dkSEjFN4Wa3XCfBmKzno",
+                    "title": "Fulltext search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01AJVzQ3NrYmUERH9L3a9hgD",
+                    "statusText": "Viewed file",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/main/java/com/example/infinite_track/presentation/screen/attendance/AttendanceViewModel.kt",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\attendance\\AttendanceViewModel.kt"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Perfect! Now I understand the MapEvent class structure and how it's used. Let me generate comprehensive tests for it. First, let me check if there are any existing ViewModel tests to follow the same pattern:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01Ba34Y8cudpLHJ8cmqJZRLs",
+                    "title": "File search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01Qi2ZYQ1CNZs8PH1gsYxuRp",
+                    "title": "Fulltext search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Since there are no existing ViewModel tests, I'll create a test class following Android testing best practices. Based on the code analysis, I can see that MapEvent is a sealed class with two implementations used in AttendanceViewModel. Let me create comprehensive tests for the MapEvent class:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01PwLfPFGjaTR8M61yMuCvyC",
+                    "statusText": "Change generated",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/test/java/com/example/infinite_track/presentation/screen/attendance/MapEventTest.kt",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\test\\java\\com\\example\\infinite_track\\presentation\\screen\\attendance\\MapEventTest.kt"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                },
+                {
+                    "type": "codeHunk",
+                    "lineBasedDiff": "--- app/src/test/java/com/example/infinite_track/presentation/screen/attendance/MapEventTest.kt\n+++ app/src/test/java/com/example/infinite_track/presentation/screen/attendance/MapEventTest.kt\n@@ -0,0 +1,174 @@\n+package com.example.infinite_track.presentation.screen.attendance\n+\n+import org.junit.Test\n+import org.junit.Assert.*\n+\n+/**\n+ * Unit tests for MapEvent sealed class\n+ */\n+class MapEventTest {\n+\n+    @Test\n+    fun animateToLocation_createsInstanceWithCorrectData() {\n+        // Given\n+        val latitude = 37.7749\n+        val longitude = -122.4194\n+\n+        // When\n+        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)\n+\n+        // Then\n+        assertEquals(latitude, event.latitude, 0.0001)\n+        assertEquals(longitude, event.longitude, 0.0001)\n+    }\n+\n+    @Test\n+    fun animateToLocation_withZeroCoordinates() {\n+        // Given\n+        val latitude = 0.0\n+        val longitude = 0.0\n+\n+        // When\n+        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)\n+\n+        // Then\n+        assertEquals(0.0, event.latitude, 0.0001)\n+        assertEquals(0.0, event.longitude, 0.0001)\n+    }\n+\n+    @Test\n+    fun animateToLocation_withNegativeCoordinates() {\n+        // Given\n+        val latitude = -33.8688\n+        val longitude = 151.2093\n+\n+        // When\n+        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)\n+\n+        // Then\n+        assertEquals(-33.8688, event.latitude, 0.0001)\n+        assertEquals(151.2093, event.longitude, 0.0001)\n+    }\n+\n+    @Test\n+    fun animateToLocation_isInstanceOfMapEvent() {\n+        // Given\n+        val event = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)\n+\n+        // Then\n+        assertTrue(event is AttendanceViewModel.MapEvent)\n+    }\n+\n+    @Test\n+    fun showLocationError_isObjectInstance() {\n+        // Given\n+        val event = AttendanceViewModel.MapEvent.ShowLocationError\n+\n+        // Then\n+        assertTrue(event is AttendanceViewModel.MapEvent)\n+        assertSame(AttendanceViewModel.MapEvent.ShowLocationError, event)\n+    }\n+\n+    @Test\n+    fun showLocationError_singletonBehavior() {\n+        // Given\n+        val event1 = AttendanceViewModel.MapEvent.ShowLocationError\n+        val event2 = AttendanceViewModel.MapEvent.ShowLocationError\n+\n+        // Then\n+        assertSame(event1, event2)\n+    }\n+\n+    @Test\n+    fun animateToLocation_dataClassEquality() {\n+        // Given\n+        val event1 = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)\n+        val event2 = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)\n+\n+        // Then\n+        assertEquals(event1, event2)\n+        assertEquals(event1.hashCode(), event2.hashCode())\n+    }\n+\n+    @Test\n+    fun animateToLocation_dataClassInequality() {\n+        // Given\n+        val event1 = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)\n+        val event2 = AttendanceViewModel.MapEvent.AnimateToLocation(3.0, 4.0)\n+\n+        // Then\n+        assertNotEquals(event1, event2)\n+    }\n+\n+    @Test\n+    fun animateToLocation_toStringContainsCoordinates() {\n+        // Given\n+        val latitude = 37.7749\n+        val longitude = -122.4194\n+        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)\n+\n+        // When\n+        val result = event.toString()\n+\n+        // Then\n+        assertTrue(result.contains(latitude.toString()))\n+        assertTrue(result.contains(longitude.toString()))\n+        assertTrue(result.contains(\"AnimateToLocation\"))\n+    }\n+\n+    @Test\n+    fun mapEvent_sealedClassTypeChecking() {\n+        // Given\n+        val animateEvent: AttendanceViewModel.MapEvent = \n+            AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)\n+        val errorEvent: AttendanceViewModel.MapEvent = \n+            AttendanceViewModel.MapEvent.ShowLocationError\n+\n+        // When & Then\n+        when (animateEvent) {\n+            is AttendanceViewModel.MapEvent.AnimateToLocation -> {\n+                assertEquals(1.0, animateEvent.latitude, 0.0001)\n+                assertEquals(2.0, animateEvent.longitude, 0.0001)\n+            }\n+            is AttendanceViewModel.MapEvent.ShowLocationError -> {\n+                fail(\"Expected AnimateToLocation but got ShowLocationError\")\n+            }\n+        }\n+\n+        when (errorEvent) {\n+            is AttendanceViewModel.MapEvent.AnimateToLocation -> {\n+                fail(\"Expected ShowLocationError but got AnimateToLocation\")\n+            }\n+            is AttendanceViewModel.MapEvent.ShowLocationError -> {\n+                // Expected - test passes\n+            }\n+        }\n+    }\n+\n+    @Test\n+    fun animateToLocation_copyFunctionality() {\n+        // Given\n+        val originalEvent = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)\n+\n+        // When\n+        val copiedEvent = originalEvent.copy(latitude = 3.0)\n+\n+        // Then\n+        assertEquals(3.0, copiedEvent.latitude, 0.0001)\n+        assertEquals(2.0, copiedEvent.longitude, 0.0001)\n+        assertNotEquals(originalEvent, copiedEvent)\n+    }\n+\n+    @Test\n+    fun animateToLocation_componentDestructuring() {\n+        // Given\n+        val event = AttendanceViewModel.MapEvent.AnimateToLocation(37.7749, -122.4194)\n+\n+        // When\n+        val (latitude, longitude) = event\n+\n+        // Then\n+        assertEquals(37.7749, latitude, 0.0001)\n+        assertEquals(-122.4194, longitude, 0.0001)\n+    }\n+}",
+                    "refToolCallId": "toolu_01PwLfPFGjaTR8M61yMuCvyC"
+                },
+                {
+                    "type": "text",
+                    "text": "Now let me run the diagnostic tool to check if the tests are valid:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_011DMRSP33iLKPPp72WwttaG",
+                    "statusText": "No issues found in code",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Great! The tests are syntactically valid. Now let me run the tests to make sure they pass:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01KMHe4XpYL139XFgcSKjtPn",
+                    "status": "IN_PROGRESS",
+                    "isHidden": true
+                },
+                {
+                    "type": "codePatch",
+                    "diffs": [
+                        {
+                            "path": "app/src/test/java/com/example/infinite_track/presentation/screen/attendance/MapEventTest.kt",
+                            "patch": "@@ -0,0 +1,5293 @@\n+package com.example.infinite_track.presentation.screen.attendance%0D%0A%0D%0Aimport org.junit.Test%0D%0Aimport org.junit.Assert.*%0D%0A%0D%0A/**%0D%0A * Unit tests for MapEvent sealed class%0D%0A */%0D%0Aclass MapEventTest %7B%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_createsInstanceWithCorrectData() %7B%0D%0A        // Given%0D%0A        val latitude = 37.7749%0D%0A        val longitude = -122.4194%0D%0A%0D%0A        // When%0D%0A        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)%0D%0A%0D%0A        // Then%0D%0A        assertEquals(latitude, event.latitude, 0.0001)%0D%0A        assertEquals(longitude, event.longitude, 0.0001)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_withZeroCoordinates() %7B%0D%0A        // Given%0D%0A        val latitude = 0.0%0D%0A        val longitude = 0.0%0D%0A%0D%0A        // When%0D%0A        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)%0D%0A%0D%0A        // Then%0D%0A        assertEquals(0.0, event.latitude, 0.0001)%0D%0A        assertEquals(0.0, event.longitude, 0.0001)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_withNegativeCoordinates() %7B%0D%0A        // Given%0D%0A        val latitude = -33.8688%0D%0A        val longitude = 151.2093%0D%0A%0D%0A        // When%0D%0A        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)%0D%0A%0D%0A        // Then%0D%0A        assertEquals(-33.8688, event.latitude, 0.0001)%0D%0A        assertEquals(151.2093, event.longitude, 0.0001)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_isInstanceOfMapEvent() %7B%0D%0A        // Given%0D%0A        val event = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)%0D%0A%0D%0A        // Then%0D%0A        assertTrue(event is AttendanceViewModel.MapEvent)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun showLocationError_isObjectInstance() %7B%0D%0A        // Given%0D%0A        val event = AttendanceViewModel.MapEvent.ShowLocationError%0D%0A%0D%0A        // Then%0D%0A        assertTrue(event is AttendanceViewModel.MapEvent)%0D%0A        assertSame(AttendanceViewModel.MapEvent.ShowLocationError, event)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun showLocationError_singletonBehavior() %7B%0D%0A        // Given%0D%0A        val event1 = AttendanceViewModel.MapEvent.ShowLocationError%0D%0A        val event2 = AttendanceViewModel.MapEvent.ShowLocationError%0D%0A%0D%0A        // Then%0D%0A        assertSame(event1, event2)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_dataClassEquality() %7B%0D%0A        // Given%0D%0A        val event1 = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)%0D%0A        val event2 = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)%0D%0A%0D%0A        // Then%0D%0A        assertEquals(event1, event2)%0D%0A        assertEquals(event1.hashCode(), event2.hashCode())%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_dataClassInequality() %7B%0D%0A        // Given%0D%0A        val event1 = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)%0D%0A        val event2 = AttendanceViewModel.MapEvent.AnimateToLocation(3.0, 4.0)%0D%0A%0D%0A        // Then%0D%0A        assertNotEquals(event1, event2)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_toStringContainsCoordinates() %7B%0D%0A        // Given%0D%0A        val latitude = 37.7749%0D%0A        val longitude = -122.4194%0D%0A        val event = AttendanceViewModel.MapEvent.AnimateToLocation(latitude, longitude)%0D%0A%0D%0A        // When%0D%0A        val result = event.toString()%0D%0A%0D%0A        // Then%0D%0A        assertTrue(result.contains(latitude.toString()))%0D%0A        assertTrue(result.contains(longitude.toString()))%0D%0A        assertTrue(result.contains(%22AnimateToLocation%22))%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun mapEvent_sealedClassTypeChecking() %7B%0D%0A        // Given%0D%0A        val animateEvent: AttendanceViewModel.MapEvent = %0D%0A            AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)%0D%0A        val errorEvent: AttendanceViewModel.MapEvent = %0D%0A            AttendanceViewModel.MapEvent.ShowLocationError%0D%0A%0D%0A        // When & Then%0D%0A        when (animateEvent) %7B%0D%0A            is AttendanceViewModel.MapEvent.AnimateToLocation -%3E %7B%0D%0A                assertEquals(1.0, animateEvent.latitude, 0.0001)%0D%0A                assertEquals(2.0, animateEvent.longitude, 0.0001)%0D%0A            %7D%0D%0A            is AttendanceViewModel.MapEvent.ShowLocationError -%3E %7B%0D%0A                fail(%22Expected AnimateToLocation but got ShowLocationError%22)%0D%0A            %7D%0D%0A        %7D%0D%0A%0D%0A        when (errorEvent) %7B%0D%0A            is AttendanceViewModel.MapEvent.AnimateToLocation -%3E %7B%0D%0A                fail(%22Expected ShowLocationError but got AnimateToLocation%22)%0D%0A            %7D%0D%0A            is AttendanceViewModel.MapEvent.ShowLocationError -%3E %7B%0D%0A                // Expected - test passes%0D%0A            %7D%0D%0A        %7D%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_copyFunctionality() %7B%0D%0A        // Given%0D%0A        val originalEvent = AttendanceViewModel.MapEvent.AnimateToLocation(1.0, 2.0)%0D%0A%0D%0A        // When%0D%0A        val copiedEvent = originalEvent.copy(latitude = 3.0)%0D%0A%0D%0A        // Then%0D%0A        assertEquals(3.0, copiedEvent.latitude, 0.0001)%0D%0A        assertEquals(2.0, copiedEvent.longitude, 0.0001)%0D%0A        assertNotEquals(originalEvent, copiedEvent)%0D%0A    %7D%0D%0A%0D%0A    @Test%0D%0A    fun animateToLocation_componentDestructuring() %7B%0D%0A        // Given%0D%0A        val event = AttendanceViewModel.MapEvent.AnimateToLocation(37.7749, -122.4194)%0D%0A%0D%0A        // When%0D%0A        val (latitude, longitude) = event%0D%0A%0D%0A        // Then%0D%0A        assertEquals(37.7749, latitude, 0.0001)%0D%0A        assertEquals(-122.4194, longitude, 0.0001)%0D%0A    %7D%0D%0A%7D\n",
+                            "isNew": true,
+                            "isApplied": false
+                        }
+                    ]
+                },
+                {
+                    "type": "shellCommand",
+                    "command": "cd E:/skrisi/Infinite_Track1; ./gradlew test --tests \"com.example.infinite_track.presentation.screen.attendance.MapEventTest\"",
+                    "id": "e2438bf4-ce13-48a7-bf61-c79ff17e1a87",
+                    "status": "CONFIRMATION",
+                    "toolCallId": "toolu_01KMHe4XpYL139XFgcSKjtPn",
+                    "commandsRequiringConfirmation": [
+                        {
+                            "name": "gradlew",
+                            "arguments": [
+                                "test",
+                                "--tests"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "context": {
+                "author": "Unit Test Agent",
+                "operationId": "cb93670e-b881-4bdb-9422-bf13ac756976"
+            },
+            "createdAt": 1751437379583,
+            "isInternal": false
+        }
+    ],
+    "isAgent": true,
+    "isNameGenerated": true,
+    "isUnitTestsAgent": true
+}
+}

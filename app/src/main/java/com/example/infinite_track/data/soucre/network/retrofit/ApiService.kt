@@ -9,6 +9,7 @@ import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.LogoutResponse
 import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
+import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import retrofit2.http.*
 import javax.inject.Singleton
 
@@ -48,5 +49,10 @@ interface ApiService {
         @Path("id") userId: Int,
         @Body request: ProfileUpdateRequest
     ): ProfileUpdateResponse
+
+    @POST("api/attendance/location-event")
+    suspend fun sendLocationEvent(
+        @Body request: LocationEventRequest
+    ): retrofit2.Response<Unit>
 
 }

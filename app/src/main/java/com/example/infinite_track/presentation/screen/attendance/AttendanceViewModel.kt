@@ -3,27 +3,32 @@ package com.example.infinite_track.presentation.screen.attendance
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
-import com.example.infinite_track.domain.use_case.attendance.ValidateLocationUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
+import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.utils.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Single state object that holds all data needed by AttendanceScreen UI
+ * Simplified state object focused on reactive geofence integration
+ * Removed manual distance calculation and GPS tracking logic
  */
 data class AttendanceScreenState(
     val uiState: UiState<Unit> = UiState.Loading,
@@ -32,16 +37,13 @@ data class AttendanceScreenState(
     val currentUserAddress: String = "",
     val currentUserLatitude: Double? = null,
     val currentUserLongitude: Double? = null,
-    val isCheckInEnabled: Boolean = false,
     val isBookingEnabled: Boolean = false,
     val selectedWorkMode: String = "Work From Office",
-    val distanceToTarget: Float? = null,
-    val isWithinGeofence: Boolean = false,
-    // New properties for map marker management
+    // Map-specific properties
     val targetLocationMarker: Location? = null,
     val selectedMarkerInfo: Location? = null
 ) {
-    // Convenience getter untuk UI components
+    // Convenience getter for UI components
     val targetLocationInfo: TargetLocationInfo?
         get() = targetLocation?.let { target ->
             TargetLocationInfo(
@@ -52,39 +54,62 @@ data class AttendanceScreenState(
 }
 
 /**
- * ViewModel untuk AttendanceScreen yang mengelola semua state dan logika absensi
+ * Simplified ViewModel that is fully reactive to geofence state
+ * Removed manual GPS tracking and distance calculation logic
+ * Uses geofence as the single source of truth for validation
  */
-
 @HiltViewModel
 class AttendanceViewModel @Inject constructor(
     private val getTodayStatusUseCase: GetTodayStatusUseCase,
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
     private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
-    private val validateLocationUseCase: ValidateLocationUseCase
+    private val attendancePreference: AttendancePreference,
+    private val geofenceManager: GeofenceManager
 ) : ViewModel() {
 
     /**
-     * Sealed class untuk event yang dikirim ke UI terkait peta
+     * Sealed class for map events sent to UI
      */
     sealed class MapEvent {
         data class AnimateToLocation(val latitude: Double, val longitude: Double) : MapEvent()
         object ShowLocationError : MapEvent()
     }
 
-    // Single StateFlow that holds all UI state
+    // Main UI state
     private val _uiState = MutableStateFlow(AttendanceScreenState())
     val uiState: StateFlow<AttendanceScreenState> = _uiState.asStateFlow()
 
-    // Channel untuk mengirim event satu kali dari ViewModel ke UI
+    // Reactive geofence status from DataStore (single source of truth for validation)
+    val isUserInsideGeofence: StateFlow<Boolean> = attendancePreference
+        .isUserInsideGeofence()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    // Reactive check-in eligibility combining today status and geofence status
+    val isCheckInEnabled: StateFlow<Boolean> = combine(
+        _uiState,
+        isUserInsideGeofence
+    ) { state, isInside ->
+        state.todayStatus?.canCheckIn == true && isInside
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+
+    // Channel for one-time events to UI
     private val _mapEvent = Channel<MapEvent>()
     val mapEvent = _mapEvent.receiveAsFlow()
 
-    // Job untuk tracking lokasi secara real-time
-    private var locationTrackingJob: Job? = null
+    // Job for UI-focused location updates (display purposes only)
+    private var displayLocationJob: Job? = null
 
     companion object {
         private const val TAG = "AttendanceViewModel"
-        private const val LOCATION_UPDATE_INTERVAL = 10000L // 10 seconds
+        private const val DISPLAY_UPDATE_INTERVAL = 10000L // 10 seconds for UI updates
     }
 
     init {
@@ -92,18 +117,18 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fungsi privat untuk menginisialisasi semua data yang dibutuhkan
+     * Initialize data by fetching today status and starting display updates
      */
     private fun initializeData() {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(uiState = UiState.Loading)
 
-                // Ambil status hari ini terlebih dahulu
+                // Fetch today status first
                 fetchTodayStatus()
 
-                // Mulai tracking lokasi setelah mendapat status
-                startLocationUpdates()
+                // Start location updates for display purposes only
+                startDisplayLocationUpdates()
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing data", e)
@@ -115,7 +140,7 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fungsi privat untuk mengambil status hari ini dari API
+     * Fetch today status and setup geofence if target location exists
      */
     private suspend fun fetchTodayStatus() {
         try {
@@ -128,11 +153,16 @@ class AttendanceViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     todayStatus = todayStatus,
                     targetLocation = todayStatus.activeLocation,
-                    targetLocationMarker = todayStatus.activeLocation, // Set marker for map display
+                    targetLocationMarker = todayStatus.activeLocation,
                     isBookingEnabled = isBookingEnabled,
                     selectedWorkMode = selectedMode,
                     uiState = UiState.Success(Unit)
                 )
+
+                // Setup geofence for target location (validation purposes)
+                todayStatus.activeLocation?.let { location ->
+                    setupGeofence(location)
+                }
 
                 Log.d(
                     TAG,
@@ -154,120 +184,82 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fungsi privat untuk memulai tracking lokasi secara real-time
+     * Setup geofence for validation (background monitoring)
      */
-    private fun startLocationUpdates() {
-        // Cancel previous job if exists
-        locationTrackingJob?.cancel()
+    private fun setupGeofence(location: Location) {
+        try {
+            geofenceManager.addGeofence(
+                id = location.locationId.toString(),
+                latitude = location.latitude,
+                longitude = location.longitude,
+                radius = location.radius.toFloat()
+            )
+            Log.d(TAG, "Geofence setup for location: ${location.description}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to setup geofence", e)
+        }
+    }
 
-        locationTrackingJob = viewModelScope.launch {
+    /**
+     * Start location updates for display purposes only (UI updates)
+     * This runs only while ViewModel is active for better UX
+     */
+    private fun startDisplayLocationUpdates() {
+        displayLocationJob?.cancel()
+
+        displayLocationJob = viewModelScope.launch {
             while (true) {
                 try {
-                    updateCurrentLocation()
-                    delay(LOCATION_UPDATE_INTERVAL)
+                    updateDisplayLocation()
+                    delay(DISPLAY_UPDATE_INTERVAL)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error in location tracking loop", e)
-                    delay(LOCATION_UPDATE_INTERVAL) // Continue tracking even if there's an error
+                    Log.e(TAG, "Error in display location updates", e)
+                    delay(DISPLAY_UPDATE_INTERVAL)
                 }
             }
         }
     }
 
     /**
-     * Fungsi privat untuk mengupdate lokasi pengguna saat ini
-     * Tidak lagi melakukan auto-focus ke lokasi user
+     * Update location data for display purposes only
+     * Does not affect validation logic
      */
-    private suspend fun updateCurrentLocation() {
+    private suspend fun updateDisplayLocation() {
         try {
-            // Get current address
+            // Update current address for display
             getCurrentAddressUseCase().onSuccess { address ->
                 _uiState.value = _uiState.value.copy(currentUserAddress = address)
-                Log.d(TAG, "Current address updated: $address")
+                Log.d(TAG, "Display address updated: $address")
             }.onFailure { exception ->
-                Log.w(TAG, "Failed to get current address", exception)
+                Log.w(TAG, "Failed to get display address", exception)
             }
 
-            // Get current coordinates
+            // Update current coordinates for map display
             getCurrentCoordinatesUseCase().onSuccess { coordinates ->
                 val (latitude, longitude) = coordinates
                 _uiState.value = _uiState.value.copy(
                     currentUserLatitude = latitude,
                     currentUserLongitude = longitude
                 )
-
-                Log.d(TAG, "Current coordinates updated: $latitude, $longitude")
-
-                // Validate geofence if target location is available
-                validateGeofence(latitude, longitude)
-
+                Log.d(TAG, "Display coordinates updated: $latitude, $longitude")
             }.onFailure { exception ->
-                Log.w(TAG, "Failed to get current coordinates", exception)
-                // Reset check-in status if location can't be obtained
-                _uiState.value = _uiState.value.copy(
-                    isCheckInEnabled = false,
-                    isWithinGeofence = false
-                )
+                Log.w(TAG, "Failed to get display coordinates", exception)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error in updateCurrentLocation", e)
+            Log.e(TAG, "Unexpected error in updateDisplayLocation", e)
         }
     }
 
     /**
-     * Fungsi privat untuk memvalidasi apakah pengguna berada dalam geofence
-     */
-    private fun validateGeofence(userLatitude: Double, userLongitude: Double) {
-        val targetLocation = _uiState.value.targetLocation
-        val todayStatus = _uiState.value.todayStatus
-
-        if (targetLocation != null && todayStatus != null) {
-            val isWithinRadius = validateLocationUseCase(
-                userLatitude = userLatitude,
-                userLongitude = userLongitude,
-                targetLatitude = targetLocation.latitude,
-                targetLongitude = targetLocation.longitude,
-                radius = targetLocation.radius
-            )
-
-            // Check-in enabled if within geofence AND can check in according to today status
-            val canCheckIn = isWithinRadius && todayStatus.canCheckIn
-
-            _uiState.value = _uiState.value.copy(
-                isCheckInEnabled = canCheckIn,
-                isWithinGeofence = isWithinRadius
-            )
-
-            Log.d(
-                TAG,
-                "Geofence validation: within radius = $isWithinRadius, can check in = $canCheckIn"
-            )
-        } else {
-            Log.d(TAG, "Cannot validate geofence: missing target location or today status")
-            _uiState.value = _uiState.value.copy(
-                isCheckInEnabled = false,
-                isWithinGeofence = false
-            )
-        }
-    }
-
-    /**
-     * Fungsi yang dipanggil saat pengguna memilih mode kerja
+     * Handle work mode selection
      */
     fun onWorkModeSelected(mode: String) {
         Log.d(TAG, "Work mode selected: $mode")
         _uiState.value = _uiState.value.copy(selectedWorkMode = mode)
-
-        // Re-validate geofence based on new mode if needed
-        val currentLatitude = _uiState.value.currentUserLatitude
-        val currentLongitude = _uiState.value.currentUserLongitude
-
-        if (currentLatitude != null && currentLongitude != null) {
-            validateGeofence(currentLatitude, currentLongitude)
-        }
     }
 
     /**
-     * Fungsi yang dipanggil saat tombol booking ditekan
+     * Handle booking button click
      */
     fun onBookingClicked() {
         Log.d(TAG, "Booking clicked for mode: ${_uiState.value.selectedWorkMode}")
@@ -275,19 +267,24 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fungsi yang dipanggil saat tombol check-in ditekan
+     * Handle check-in button click
      */
     fun onCheckInClicked() {
-        val currentState = _uiState.value
-        Log.d(TAG, "Check-in clicked. Enabled: ${currentState.isCheckInEnabled}")
+        viewModelScope.launch {
+            val canCheckIn = isCheckInEnabled.value
+            Log.d(TAG, "Check-in clicked. Enabled: $canCheckIn")
 
-        if (currentState.isCheckInEnabled) {
-            // TODO: Implement check-in logic
+            if (canCheckIn) {
+                // TODO: Implement check-in logic
+                Log.d(TAG, "Proceeding with check-in...")
+            } else {
+                Log.d(TAG, "Check-in not allowed - user outside geofence or can't check in")
+            }
         }
     }
 
     /**
-     * Fungsi yang dipanggil saat marker di peta diklik
+     * Handle map marker click
      */
     fun onMarkerClicked(location: Location) {
         Log.d(TAG, "Marker clicked for location: ${location.description}")
@@ -295,7 +292,7 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fungsi yang dipanggil saat dialog marker info ditutup
+     * Handle marker info dialog dismissal
      */
     fun onDismissMarkerInfo() {
         Log.d(TAG, "Marker info dialog dismissed")
@@ -303,8 +300,7 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fungsi yang dipanggil saat tombol fokus lokasi ditekan
-     * Menggunakan GetCurrentCoordinatesUseCase yang sudah ada dalam infrastruktur
+     * Handle focus location button click
      */
     fun onFocusLocationClicked() {
         viewModelScope.launch {
@@ -312,13 +308,13 @@ class AttendanceViewModel @Inject constructor(
                 getCurrentCoordinatesUseCase().onSuccess { coordinates ->
                     val (latitude, longitude) = coordinates
 
-                    // Update current user location in state untuk sinkronisasi
+                    // Update state for immediate display
                     _uiState.value = _uiState.value.copy(
                         currentUserLatitude = latitude,
                         currentUserLongitude = longitude
                     )
 
-                    // Send event untuk animasi kamera dengan zoom yang tepat
+                    // Send map animation event
                     _mapEvent.send(
                         MapEvent.AnimateToLocation(
                             latitude = latitude,
@@ -340,7 +336,13 @@ class AttendanceViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        locationTrackingJob?.cancel()
-        Log.d(TAG, "ViewModel cleared, location tracking stopped")
+        displayLocationJob?.cancel()
+
+        // Clean up geofence when ViewModel is cleared
+        _uiState.value.targetLocation?.let { location ->
+            geofenceManager.removeGeofence(location.locationId.toString())
+        }
+
+        Log.d(TAG, "ViewModel cleared, display location tracking stopped")
     }
 }

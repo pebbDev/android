@@ -94,6 +94,11 @@ dependencies {
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.firebase.messaging)
+
+    // WorkManager untuk background tasks
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

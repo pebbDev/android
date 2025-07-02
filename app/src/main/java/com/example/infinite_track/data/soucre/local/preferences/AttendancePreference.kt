@@ -3,6 +3,7 @@ package com.example.infinite_track.data.soucre.local.preferences
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -22,6 +23,7 @@ class AttendancePreference @Inject constructor(
 
     companion object {
         private val ACTIVE_ATTENDANCE_ID_KEY = intPreferencesKey("active_attendance_id")
+        private val IS_INSIDE_GEOFENCE_KEY = booleanPreferencesKey("is_inside_geofence")
     }
 
     /**
@@ -48,6 +50,26 @@ class AttendancePreference @Inject constructor(
     suspend fun clearActiveAttendanceId() {
         dataStore.edit { preferences ->
             preferences.remove(ACTIVE_ATTENDANCE_ID_KEY)
+        }
+    }
+
+    /**
+     * Get the user's geofence status as a Flow
+     * @return Flow<Boolean> - true if user is inside geofence, false otherwise (default: false)
+     */
+    fun isUserInsideGeofence(): Flow<Boolean> {
+        return dataStore.data.map { preferences ->
+            preferences[IS_INSIDE_GEOFENCE_KEY] ?: false
+        }
+    }
+
+    /**
+     * Set the user's geofence status
+     * @param isInside true if user entered geofence, false if user exited
+     */
+    suspend fun setUserInsideGeofence(isInside: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[IS_INSIDE_GEOFENCE_KEY] = isInside
         }
     }
 }

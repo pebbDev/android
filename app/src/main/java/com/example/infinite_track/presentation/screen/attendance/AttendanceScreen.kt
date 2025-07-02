@@ -57,8 +57,14 @@ fun AttendanceScreen(
 ) {
     var mapViewInstance by remember { mutableStateOf<MapView?>(null) }
 
-    // Observasi state tunggal dari ViewModel
+    // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Observasi geofence status secara reaktif
+    val isUserInsideGeofence by viewModel.isUserInsideGeofence.collectAsStateWithLifecycle()
+
+    // Observasi check-in eligibility yang sudah dikombinasi secara reaktif
+    val isCheckInEnabled by viewModel.isCheckInEnabled.collectAsStateWithLifecycle()
 
     // BottomSheet state
     val bottomSheetState = rememberStandardBottomSheetState(
@@ -232,8 +238,8 @@ fun AttendanceScreen(
                                 currentLocationAddress = uiState.currentUserAddress.ifEmpty { "Mengambil lokasi saat ini..." },
                                 selectedWorkMode = uiState.selectedWorkMode,
                                 isBookingEnabled = uiState.isBookingEnabled,
-                                isCheckInEnabled = uiState.isCheckInEnabled,
-                                checkInButtonText = if (uiState.isWithinGeofence) "Check In" else "Di Luar Jangkauan",
+                                isCheckInEnabled = isCheckInEnabled, // Use reactive state from ViewModel
+                                checkInButtonText = if (isUserInsideGeofence) "Check In" else "Di Luar Jangkauan",
                                 onModeSelected = { mode -> viewModel.onWorkModeSelected(mode) },
                                 onBookingClick = { viewModel.onBookingClicked() },
                                 onCheckInClick = { viewModel.onCheckInClicked() }

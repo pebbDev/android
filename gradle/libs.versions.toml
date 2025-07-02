@@ -2,6 +2,7 @@
 accompanistPermissions = "0.28.0"
 agp = "8.5.2"
 dotlottieAndroid = "0.5.0"
+hiltWork = "1.0.0"
 mapboxMapsSdk = "11.12.4" # Renamed from 'android'
 mapboxMapsComposeExtension = "11.12.4" # Added Mapbox Compose Extension version
 cameraCamera2 = "1.3.4"
@@ -48,9 +49,12 @@ googleGmsGoogleServices = "4.4.2"
 firebaseMessaging = "24.0.3"
 roomCompiler = "2.6.1"
 roomRuntime = "2.6.1"
+workRuntimeKtx = "2.9.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
+androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltWork" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 dotlottie-android = { module = "com.github.LottieFiles:dotlottie-android", version.ref = "dotlottieAndroid" }
 mapboxMapsSdk = { module = "com.mapbox.maps:android", version.ref = "mapboxMapsSdk" } # Renamed from 'android'
 mapboxMapsComposeExtension = { module = "com.mapbox.extension:maps-compose", version.ref = "mapboxMapsComposeExtension" } # Corrected module name
