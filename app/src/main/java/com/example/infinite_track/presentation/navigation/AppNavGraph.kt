@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.example.infinite_track.presentation.main.MainScreen
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
+import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.auth.LoginScreen
 import com.example.infinite_track.presentation.screen.splash.SplashScreen
 
@@ -47,5 +48,17 @@ fun NavGraphBuilder.appNavGraph(
     // Attendance Screen
     composable(Screen.Attendance.route) {
         AttendanceScreen(navController = navController)
+    }
+
+    // Location Search Screen - untuk pencarian lokasi attendance
+    composable(Screen.LocationSearch.route) {
+        LocationSearchScreen(
+            navController = navController,
+            onLocationSelected = {
+                // Handle location selection - bisa dikembangkan untuk menyimpan lokasi terpilih
+                // Untuk sementara, kembali ke AttendanceScreen
+                navController.navigateUp()
+            }
+        )
     }
 }

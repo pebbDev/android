@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
-import com.example.infinite_track.presentation.components.search.InfiniteTrackSearchBar
+import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.presentation.theme.Purple_500
@@ -20,16 +20,14 @@ import com.example.infinite_track.presentation.theme.Purple_500
  * Komponen utama untuk konten BottomSheet attendance yang merakit semua komponen kecil.
  *
  * @param modifier Modifier untuk styling komponen
- * @param searchValue Nilai dari search bar
- * @param searchPlaceholder Placeholder untuk search bar
  * @param targetLocationInfo Informasi lokasi target (description dan nama lokasi dari API)
  * @param currentLocationAddress Alamat lokasi saat ini
- * @param selectedWorkMode Mode kerja yang dipilih ("WFH" atau "WFA")
+ * @param selectedWorkMode Mode kerja yang dipilih ("WFH", "WFA", atau "WFO")
  * @param isBookingEnabled Apakah tombol booking dapat diklik
  * @param isCheckInEnabled Apakah tombol check-in dapat diklik
  * @param checkInButtonText Teks pada tombol check-in
  * @param outOfRangeWarningText Teks peringatan ketika di luar jangkauan
- * @param onSearchChange Callback ketika search value berubah
+ * @param onSearchLocationClick Callback ketika tombol search location diklik (hanya untuk WFA)
  * @param onModeSelected Callback ketika mode kerja dipilih
  * @param onBookingClick Callback ketika tombol booking diklik
  * @param onCheckInClick Callback ketika tombol check-in diklik
@@ -37,8 +35,6 @@ import com.example.infinite_track.presentation.theme.Purple_500
 @Composable
 fun AttendanceBottomSheetContent(
     modifier: Modifier = Modifier,
-    searchValue: String = "",
-    searchPlaceholder: String = "Search location...",
     targetLocationInfo: TargetLocationInfo?,
     currentLocationAddress: String,
     selectedWorkMode: String,
@@ -46,7 +42,7 @@ fun AttendanceBottomSheetContent(
     isCheckInEnabled: Boolean,
     checkInButtonText: String,
     outOfRangeWarningText: String = "Anda berada di luar jangkauan lokasi kerja ?",
-    onSearchChange: (String) -> Unit = {},
+    onSearchLocationClick: () -> Unit = {}, // Untuk navigasi ke LocationSearchScreen
     onModeSelected: (String) -> Unit,
     onBookingClick: () -> Unit,
     onCheckInClick: () -> Unit
@@ -59,12 +55,14 @@ fun AttendanceBottomSheetContent(
             .padding(start = 20.dp, end = 20.dp, bottom = 20.dp), // Remove top padding
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Search Bar
-        InfiniteTrackSearchBar(
-            value = searchValue,
-            placeholder = searchPlaceholder,
-            onChange = onSearchChange
-        )
+        // Search Location Button - Only show when Work From Anywhere is selected
+        if (selectedWorkMode == "WFA" || selectedWorkMode == "Work From Anywhere") {
+            InfiniteTrackButton(
+                label = "Cari Lokasi",
+                onClick = onSearchLocationClick,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         // Location Information Section dengan subtitle
         LocationInfoSection(

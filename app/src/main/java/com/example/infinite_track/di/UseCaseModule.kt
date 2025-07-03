@@ -1,6 +1,7 @@
 package com.example.infinite_track.di
 
 import com.example.infinite_track.data.face.FaceProcessor
+import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
@@ -8,6 +9,7 @@ import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
+import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
@@ -19,7 +21,9 @@ import com.example.infinite_track.domain.use_case.language.GetSelectedLanguageUs
 import com.example.infinite_track.domain.use_case.language.SetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
+import com.example.infinite_track.domain.use_case.location.SearchLocationUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
+import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -98,13 +102,27 @@ object UseCaseModule {
 
     // Provide the Get Current Coordinates Use Case
     @Provides
-    fun provideGetCurrentCoordinatesUseCase(locationRepository: LocationRepository): GetCurrentCoordinatesUseCase {
-        return GetCurrentCoordinatesUseCase(locationRepository)
+    fun provideGetCurrentCoordinatesUseCase(userDao: UserDao): GetCurrentCoordinatesUseCase {
+        return GetCurrentCoordinatesUseCase(userDao)
     }
 
     // Provide the Get Today Status Use Case
     @Provides
     fun provideGetTodayStatusUseCase(attendanceRepository: AttendanceRepository): GetTodayStatusUseCase {
         return GetTodayStatusUseCase(attendanceRepository)
+    }
+
+    // Provide the WFA Recommendations Use Case
+    @Provides
+    fun provideGetWfaRecommendationsUseCase(
+        wfaRepository: WfaRepository
+    ): GetWfaRecommendationsUseCase {
+        return GetWfaRecommendationsUseCase(wfaRepository)
+    }
+
+    // Provide the Search Location Use Case
+    @Provides
+    fun provideSearchLocationUseCase(locationRepository: LocationRepository): SearchLocationUseCase {
+        return SearchLocationUseCase(locationRepository)
     }
 }

@@ -7,10 +7,13 @@ import com.example.infinite_track.data.soucre.local.preferences.AttendancePrefer
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.model.location.LocationResult
+import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
+import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
@@ -30,7 +33,7 @@ import javax.inject.Inject
 
 /**
  * Simplified state object focused on reactive geofence integration
- * Now supports both WFO and WFH location markers
+ * Now supports WFO, WFH, and WFA location markers
  */
 data class AttendanceScreenState(
     val uiState: UiState<Unit> = UiState.Loading,
@@ -38,6 +41,10 @@ data class AttendanceScreenState(
     val targetLocation: Location? = null, // Keep for backward compatibility
     val wfoLocation: Location? = null,    // Work From Office location
     val wfhLocation: Location? = null,    // Work From Home location
+    val wfaRecommendations: List<WfaRecommendation> = emptyList(), // WFA recommendations
+    val selectedWfaLocation: WfaRecommendation? = null, // Selected WFA location
+    val selectedWfaMarkerInfo: WfaRecommendation? = null, // For showing WFA marker details
+    val isWfaModeActive: Boolean = false, // Flag for WFA mode
     val currentUserAddress: String = "",
     val currentUserLatitude: Double? = null,
     val currentUserLongitude: Double? = null,
@@ -67,6 +74,7 @@ class AttendanceViewModel @Inject constructor(
     private val getTodayStatusUseCase: GetTodayStatusUseCase,
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
     private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
+    private val getWfaRecommendationsUseCase: GetWfaRecommendationsUseCase,
     private val attendancePreference: AttendancePreference,
     private val geofenceManager: GeofenceManager,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase
@@ -77,6 +85,7 @@ class AttendanceViewModel @Inject constructor(
      */
     sealed class MapEvent {
         data class AnimateToLocation(val point: Point, val zoomLevel: Double) : MapEvent()
+        data class AnimateToFitBounds(val points: List<Point>) : MapEvent()
         object ShowLocationError : MapEvent()
     }
 
@@ -168,6 +177,15 @@ class AttendanceViewModel @Inject constructor(
                 // Setup geofence for active location (validation purposes)
                 todayStatus.activeLocation?.let { location ->
                     setupGeofence(location)
+                }
+
+                // Send initial camera focus event to WFO location
+                todayStatus.activeLocation?.let { location ->
+                    val wfoPoint = Point.fromLngLat(location.longitude, location.latitude)
+                    viewModelScope.launch {
+                        _mapEvent.send(MapEvent.AnimateToLocation(wfoPoint, 15.0))
+                    }
+                    Log.d(TAG, "Initial camera focus event sent to WFO location")
                 }
 
                 Log.d(TAG, "WFO location updated: ${todayStatus.activeLocation}")
@@ -292,11 +310,19 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onWorkModeSelected(mode: String) {
         Log.d(TAG, "Work mode selected: $mode")
-        _uiState.value = _uiState.value.copy(selectedWorkMode = mode)
+        _uiState.value = _uiState.value.copy(
+            selectedWorkMode = mode,
+            isWfaModeActive = mode == "WFA" || mode == "Work From Anywhere"
+        )
 
-        // Auto-focus camera to appropriate location based on work mode
         viewModelScope.launch {
             when (mode) {
+                "WFA", "Work From Anywhere" -> {
+                    // Reset previous WFA selection
+                    _uiState.value = _uiState.value.copy(selectedWfaLocation = null)
+                    fetchWfaRecommendations()
+                }
+
                 "Work From Home", "WFH" -> {
                     _uiState.value.wfhLocation?.let { wfhLocation ->
                         val wfhPoint = Point.fromLngLat(wfhLocation.longitude, wfhLocation.latitude)
@@ -327,11 +353,98 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
+     * Fetch WFA recommendations based on current user location
+     */
+    private fun fetchWfaRecommendations() {
+        viewModelScope.launch {
+            try {
+                // Use current user location as parameters
+                val lat = _uiState.value.currentUserLatitude ?: return@launch
+                val lng = _uiState.value.currentUserLongitude ?: return@launch
+
+                Log.d(TAG, "Fetching WFA recommendations for location: $lat, $lng")
+
+                getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
+                    _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
+
+                    // Send event to zoom out and show all recommendations
+                    if (recommendations.isNotEmpty()) {
+                        val points =
+                            recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
+                        _mapEvent.send(MapEvent.AnimateToFitBounds(points))
+                        Log.d(TAG, "WFA recommendations fetched: ${recommendations.size} locations")
+                    } else {
+                        Log.w(TAG, "No WFA recommendations found")
+                    }
+                }.onFailure { exception ->
+                    Log.e(TAG, "Failed to fetch WFA recommendations", exception)
+                    // Keep empty list on error
+                    _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in fetchWfaRecommendations", e)
+                _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
+            }
+        }
+    }
+
+    /**
+     * Handle WFA marker click - Updated to show marker details
+     */
+    fun onWfaMarkerClicked(recommendation: WfaRecommendation) {
+        Log.d(TAG, "WFA Marker clicked: ${recommendation.name}")
+        _uiState.value = _uiState.value.copy(
+            selectedWfaLocation = recommendation,
+            selectedWfaMarkerInfo = recommendation // Show marker details
+        )
+
+        // Focus camera on selected WFA location
+        viewModelScope.launch {
+            val point = Point.fromLngLat(recommendation.longitude, recommendation.latitude)
+            _mapEvent.send(
+                MapEvent.AnimateToLocation(
+                    point,
+                    16.0
+                )
+            ) // Zoom closer for selected marker
+        }
+    }
+
+    /**
+     * Handle WFA marker info dismissal
+     */
+    fun onDismissWfaMarkerInfo() {
+        Log.d(TAG, "WFA marker info dialog dismissed")
+        _uiState.value = _uiState.value.copy(selectedWfaMarkerInfo = null)
+    }
+
+    /**
+     * Handle marker info dialog dismissal
+     */
+    fun onDismissMarkerInfo() {
+        Log.d(TAG, "Marker info dialog dismissed")
+        _uiState.value = _uiState.value.copy(
+            selectedMarkerInfo = null,
+            selectedWfaMarkerInfo = null // Also dismiss WFA marker info
+        )
+    }
+
+    /**
      * Handle booking button click
      */
     fun onBookingClicked() {
-        Log.d(TAG, "Booking clicked for mode: ${_uiState.value.selectedWorkMode}")
-        // TODO: Implement booking logic
+        if (_uiState.value.isWfaModeActive) {
+            _uiState.value.selectedWfaLocation?.let { wfaLocation ->
+                Log.d(TAG, "Booking WFA location: ${wfaLocation.name}")
+                // TODO: Implement WFA booking logic here
+                // You might want to navigate to a booking screen or show a booking dialog
+            } ?: run {
+                Log.w(TAG, "Booking clicked in WFA mode but no location selected.")
+            }
+        } else {
+            Log.d(TAG, "Booking clicked for mode: ${_uiState.value.selectedWorkMode}")
+            // TODO: Implement booking logic for WFO/WFH
+        }
     }
 
     /**
@@ -357,14 +470,6 @@ class AttendanceViewModel @Inject constructor(
     fun onMarkerClicked(location: Location) {
         Log.d(TAG, "Marker clicked for location: ${location.description}")
         _uiState.value = _uiState.value.copy(selectedMarkerInfo = location)
-    }
-
-    /**
-     * Handle marker info dialog dismissal
-     */
-    fun onDismissMarkerInfo() {
-        Log.d(TAG, "Marker info dialog dismissed")
-        _uiState.value = _uiState.value.copy(selectedMarkerInfo = null)
     }
 
     /**
@@ -431,6 +536,33 @@ class AttendanceViewModel @Inject constructor(
     fun startLocationUpdates() {
         Log.d(TAG, "Starting location updates for display")
         startDisplayLocationUpdates()
+    }
+
+    /**
+     * Handle selected location from LocationSearchScreen
+     */
+    fun onLocationSelected(location: LocationResult) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                selectedWfaLocation = WfaRecommendation(
+                    name = location.placeName,
+                    address = location.address,
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    score = 0.0, // Default score for manually selected location
+                    label = "Manual Selection", // Default label for manually selected location
+                    category = "Custom", // Default category for manually selected location
+                    distance = 0.0 // Distance will be calculated based on current location
+                ),
+                isWfaModeActive = true
+            )
+
+            // Animate map to the selected location
+            _mapEvent.send(MapEvent.AnimateToLocation(
+                Point.fromLngLat(location.longitude, location.latitude),
+                15.0
+            ))
+        }
     }
 
     override fun onCleared() {

@@ -1,8 +1,8 @@
 package com.example.infinite_track.di
 
 import android.os.Build
-import android.util.Log
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
+import com.example.infinite_track.data.soucre.network.mapbox.MapboxApiService
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import dagger.Module
 import dagger.Provides
@@ -16,6 +16,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -62,21 +63,48 @@ object NetworkModule {
             .build()
     }
 
-    // 4. Menyediakan Retrofit dengan deteksi emulator secara runtime
+    // 4. Menyediakan Retrofit untuk Backend API (yang sudah ada)
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    @Named("backend")
+    fun provideBackendRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(baseUrl)
+            .baseUrl(baseUrl) // Base URL backend lokal
             .addConverterFactory(GsonConverterFactory.create())
             .client(okHttpClient)
             .build()
     }
 
+    // 5. Menyediakan Retrofit untuk Mapbox API (BARU)
     @Provides
     @Singleton
-    fun provideApiService(retrofit: Retrofit): ApiService {
+    @Named("mapbox")
+    fun provideMapboxRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.mapbox.com/") // Base URL Mapbox langsung
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(
+                OkHttpClient.Builder()
+                    .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .build()
+            )
+            .build()
+    }
+
+    // 6. ApiService untuk Backend (yang sudah ada)
+    @Provides
+    @Singleton
+    fun provideApiService(@Named("backend") retrofit: Retrofit): ApiService {
         return retrofit.create(ApiService::class.java)
+    }
+
+    // 7. MapboxApiService untuk Mapbox API (BARU)
+    @Provides
+    @Singleton
+    fun provideMapboxApiService(@Named("mapbox") retrofit: Retrofit): MapboxApiService {
+        return retrofit.create(MapboxApiService::class.java)
     }
 
     // Helper method for reliable emulator detection that worked for you
@@ -89,6 +117,6 @@ object NetworkModule {
         get() = if (isEmulator()) {
             "http://10.0.2.2:3005/"
         } else {
-            "http://192.168.208.197:3005/"
+            "http://192.168.23.197:3005/"
         }
 }

@@ -13,16 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.utils.MapUtils
 import com.example.infinite_track.utils.PermissionUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.mapbox.geojson.Point
-import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
-import com.mapbox.maps.Style
-import com.mapbox.maps.plugin.animation.MapAnimationOptions
-import com.mapbox.maps.plugin.animation.flyTo
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.location
 
@@ -33,9 +30,12 @@ fun AttendanceMap(
     modifier: Modifier = Modifier,
     wfoLocation: Location? = null,        // Work From Office location
     wfhLocation: Location? = null,        // Work From Home location
+    wfaRecommendations: List<WfaRecommendation> = emptyList(), // WFA recommendations
+    selectedWfaLocation: WfaRecommendation? = null, // Selected WFA location
     targetLocation: Location? = null,     // Keep for backward compatibility
     currentUserLocation: Point? = null,
     onMarkerClick: (Location) -> Unit = {},
+    onWfaMarkerClick: (WfaRecommendation) -> Unit = {}, // New callback for WFA markers
     onMapReady: (MapView) -> Unit = {}    // Added callback for when map is ready
 ) {
     var mapView: MapView? by remember { mutableStateOf(null) }
@@ -47,47 +47,15 @@ fun AttendanceMap(
         )
     )
 
-    // Effect to handle initial camera positioning - Auto-fit to show both locations
-    LaunchedEffect(wfoLocation, wfhLocation, targetLocation, mapView) {
-        if (mapView != null) {
-            val mapboxMap = mapView!!.mapboxMap
-
-            mapboxMap.getStyle { style ->
-                val locations = listOfNotNull(wfoLocation, wfhLocation, targetLocation)
-
-                if (locations.isNotEmpty()) {
-                    if (locations.size == 1) {
-                        // Single location - focus on it
-                        val location = locations.first()
-                        val centerPoint = Point.fromLngLat(location.longitude, location.latitude)
-
-                        mapboxMap.flyTo(
-                            CameraOptions.Builder()
-                                .center(centerPoint)
-                                .zoom(16.0)
-                                .pitch(0.0)
-                                .bearing(0.0)
-                                .build(),
-                            MapAnimationOptions.Builder()
-                                .duration(1000L)
-                                .build()
-                        )
-                    } else {
-                        // Multiple locations - fit bounds to show all
-                        MapUtils.fitMapToBounds(mapView!!, locations)
-                    }
-
-                    android.util.Log.d(
-                        "AttendanceMap",
-                        "Camera positioned to show ${locations.size} location(s)"
-                    )
-                }
-            }
-        }
-    }
-
-    // Reactive effect to update all map annotations when any location data changes
-    LaunchedEffect(wfoLocation, wfhLocation, currentUserLocation, mapView) {
+    // Simplified effect to update map annotations when data changes
+    LaunchedEffect(
+        wfoLocation,
+        wfhLocation,
+        wfaRecommendations,
+        selectedWfaLocation,
+        currentUserLocation,
+        mapView
+    ) {
         mapView?.let { map ->
             // Small delay to ensure map is ready
             kotlinx.coroutines.delay(300)
@@ -97,13 +65,16 @@ fun AttendanceMap(
                 mapView = map,
                 wfoLocation = wfoLocation,
                 wfhLocation = wfhLocation,
+                wfaRecommendations = wfaRecommendations,
+                selectedWfaLocation = selectedWfaLocation,
                 currentUserLocation = currentUserLocation,
-                onMarkerClick = onMarkerClick
+                onMarkerClick = onMarkerClick,
+                onWfaMarkerClick = onWfaMarkerClick
             )
 
             android.util.Log.d(
                 "AttendanceMap",
-                "Map annotations updated - WFO: ${wfoLocation != null}, WFH: ${wfhLocation != null}, User: ${currentUserLocation != null}"
+                "Map annotations updated - WFO: ${wfoLocation != null}, WFH: ${wfhLocation != null}, WFA: ${wfaRecommendations.size}, User: ${currentUserLocation != null}"
             )
         }
     }
@@ -115,7 +86,7 @@ fun AttendanceMap(
                 factory = {
                     MapView(it).apply {
                         mapView = this // Simpan referensi MapView
-                        mapboxMap.loadStyle(Style.MAPBOX_STREETS)
+                        mapboxMap.loadStyle("mapbox://styles/mapbox/outdoors-v12")
                         gestures.pitchEnabled = true
                         gestures.scrollEnabled = true
                         gestures.rotateEnabled = true
@@ -123,25 +94,22 @@ fun AttendanceMap(
                         location.enabled = true
 
                         // Panggil callback onMapReady jika tersedia
-                        onMapReady?.invoke(this)
+                        onMapReady.invoke(this)
                     }
-                },
-                modifier = modifier.fillMaxSize()
+                }, modifier = modifier.fillMaxSize()
             )
         }
 
         locationPermissionsState.shouldShowRationale -> {
             PermissionUtils.PermissionRationale(
                 text = "Aplikasi ini membutuhkan izin lokasi untuk menampilkan peta dan memvalidasi absensi Anda.",
-                onRequestPermission = { locationPermissionsState.launchMultiplePermissionRequest() }
-            )
+                onRequestPermission = { locationPermissionsState.launchMultiplePermissionRequest() })
         }
 
         else -> {
             PermissionUtils.PermissionRationale(
                 text = "Izin lokasi diperlukan untuk fitur ini. Silakan aktifkan izin di pengaturan aplikasi.",
-                onRequestPermission = { locationPermissionsState.launchMultiplePermissionRequest() }
-            )
+                onRequestPermission = { locationPermissionsState.launchMultiplePermissionRequest() })
         }
     }
 }

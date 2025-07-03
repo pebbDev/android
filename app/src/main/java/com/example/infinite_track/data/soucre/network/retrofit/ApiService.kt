@@ -1,6 +1,7 @@
 package com.example.infinite_track.data.soucre.network.retrofit
 
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
+import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
@@ -9,8 +10,13 @@ import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.LogoutResponse
 import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
-import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
-import retrofit2.http.*
+import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
 import javax.inject.Singleton
 
 @Singleton
@@ -55,4 +61,9 @@ interface ApiService {
         @Body request: LocationEventRequest
     ): retrofit2.Response<Unit>
 
+    @GET("api/wfa/recommendations")
+    suspend fun getWfaRecommendations(
+        @Query("lat") latitude: Double,
+        @Query("lng") longitude: Double
+    ): WfaRecommendationResponse
 }

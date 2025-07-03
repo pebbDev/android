@@ -1,0 +1,90 @@
+{
+    "checksum": "593cbb18f873d1cf7f9b6a07f43b773add7f8eef2f356a8681e3f72079d99262",
+    "data": {
+    "id": "ccac60e2-6059-479c-8b98-4042ecbc2548",
+    "createdAt": 1751549814414,
+    "updatedAt": 1751549828354,
+    "title": "/unittests  Generate tests for LocationReposito...",
+    "messages": [
+        {
+            "id": "c7eb3fab-72ca-4410-aa82-2a3ce4a4df73",
+            "role": "user",
+            "content": [
+                {
+                    "type": "command",
+                    "commandName": "unittests"
+                },
+                {
+                    "type": "text",
+                    "text": " Generate tests for LocationRepositoryImpl class"
+                }
+            ],
+            "createdAt": 1751549814415,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "command",
+                                "attrs": {
+                                    "label": "unittests"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "/unittests"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": " Generate tests for LocationRepositoryImpl class"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "69ed257b-07b6-4cd4-83a8-688c50008995",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "I'll help you generate tests for the LocationRepositoryImpl class. Let me start by finding this class and understanding its structure."
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01FHMLfrPGPRKdBZi1vycSyx",
+                    "title": "File search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "I found two LocationRepositoryImpl files. Let me examine both to understand which one you're referring to:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01LpGsxgKGEr43x8Wre961LB",
+                    "statusText": "Analyzing file",
+                    "status": "IN_PROGRESS",
+                    "isHidden": false
+                }
+            ],
+            "context": {
+                "author": "Unit Test Agent",
+                "operationId": "e537f2b4-a015-4bbd-92f1-4108d82c96ee"
+            },
+            "createdAt": 1751549817975,
+            "isInternal": false
+        }
+    ],
+    "isAgent": true,
+    "isUnitTestsAgent": true
+}
+}

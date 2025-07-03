@@ -1,0 +1,98 @@
+{
+    "checksum": "352f63f9f68bf996bfac427a0394548b877a7084cae07f396ed760f046e3a0ff",
+    "data": {
+    "id": "e1708a60-17d3-4cf4-9bcf-3a82eb9be019",
+    "createdAt": 1751547753664,
+    "updatedAt": 1751547768885,
+    "title": "/unittests  Generate tests for SearchLocationUs...",
+    "messages": [
+        {
+            "id": "abd5bcec-a4df-4fff-97ab-64d3919bee8b",
+            "role": "user",
+            "content": [
+                {
+                    "type": "command",
+                    "commandName": "unittests"
+                },
+                {
+                    "type": "text",
+                    "text": " Generate tests for SearchLocationUseCase class"
+                }
+            ],
+            "createdAt": 1751547753673,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "command",
+                                "attrs": {
+                                    "label": "unittests"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "/unittests"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": " Generate tests for SearchLocationUseCase class"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "5682fa32-8e13-4be3-8236-9ec100fd50c4",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "I'll help you generate tests for the SearchLocationUseCase class. Let me first explore the codebase to understand the class structure and the existing testing framework."
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01Q7nmVkUtf48HZmux8VgSNx",
+                    "title": "File search",
+                    "statusText": "Done",
+                    "status": "SUCCESS",
+                    "isHidden": false
+                },
+                {
+                    "type": "text",
+                    "text": "Now let me examine the SearchLocationUseCase class to understand its implementation:"
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01SE1nTpTVQvVHgNu32h25HN",
+                    "statusText": "Viewed file",
+                    "status": "SUCCESS",
+                    "context": {
+                        "files": [
+                            {
+                                "path": "app/src/main/java/com/example/infinite_track/domain/use_case/location/SearchLocationUseCase.kt",
+                                "fsPath": "E:\\skrisi\\Infinite_Track1\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\location\\SearchLocationUseCase.kt"
+                            }
+                        ]
+                    },
+                    "isHidden": false
+                }
+            ],
+            "context": {
+                "author": "Unit Test Agent",
+                "operationId": "3968e643-a96d-4181-8394-920c0b4b154b"
+            },
+            "createdAt": 1751547758017,
+            "isInternal": false
+        }
+    ],
+    "isAgent": true,
+    "isUnitTestsAgent": true
+}
+}

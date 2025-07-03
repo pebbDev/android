@@ -35,21 +35,25 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
+import com.example.infinite_track.domain.model.location.LocationResult
+import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
 import com.example.infinite_track.presentation.components.empty.ErrorAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
+import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
+import com.mapbox.maps.MapboxDelicateApi
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.flyTo
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, MapboxDelicateApi::class)
 @Composable
 fun AttendanceScreen(
     navController: NavController,
@@ -65,6 +69,23 @@ fun AttendanceScreen(
 
     // Observasi check-in eligibility yang sudah dikombinasi secara reaktif
     val isCheckInEnabled by viewModel.isCheckInEnabled.collectAsStateWithLifecycle()
+
+    // Handle hasil pencarian lokasi dari LocationSearchScreen
+    val selectedLocation = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.get<LocationResult>("selected_location")
+
+    // Process hasil pencarian lokasi
+    LaunchedEffect(selectedLocation) {
+        selectedLocation?.let { location ->
+            // Kirim lokasi terpilih ke ViewModel untuk diproses
+            viewModel.onLocationSelected(location)
+            // Hapus state agar tidak diproses lagi saat re-komposisi
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.remove<LocationResult>("selected_location")
+        }
+    }
 
     // BottomSheet state
     val bottomSheetState = rememberStandardBottomSheetState(
@@ -99,6 +120,38 @@ fun AttendanceScreen(
                             "AttendanceScreen",
                             "Camera animated to ${event.point.latitude()}, ${event.point.longitude()} with zoom ${event.zoomLevel}"
                         )
+                    }
+                }
+
+                is AttendanceViewModel.MapEvent.AnimateToFitBounds -> {
+                    mapViewInstance?.let { mapView ->
+                        // Use Mapbox's cameraForCoordinates to fit all WFA recommendations
+                        if (event.points.isNotEmpty()) {
+                            val cameraOptions = mapView.mapboxMap.cameraForCoordinates(
+                                coordinates = event.points,
+                                camera = CameraOptions.Builder().build(),
+                                coordinatesPadding = com.mapbox.maps.EdgeInsets(
+                                    50.0,
+                                    50.0,
+                                    50.0,
+                                    50.0
+                                ),
+                                maxZoom = null,
+                                offset = null
+                            )
+
+                            mapView.mapboxMap.flyTo(
+                                cameraOptions,
+                                MapAnimationOptions.Builder()
+                                    .duration(1500L)
+                                    .build()
+                            )
+
+                            android.util.Log.d(
+                                "AttendanceScreen",
+                                "Camera animated to fit ${event.points.size} WFA locations"
+                            )
+                        }
                     }
                 }
 
@@ -254,6 +307,10 @@ fun AttendanceScreen(
                                 isBookingEnabled = uiState.isBookingEnabled,
                                 isCheckInEnabled = isCheckInEnabled, // Use reactive state from ViewModel
                                 checkInButtonText = if (isUserInsideGeofence) "Check In" else "Di Luar Jangkauan",
+                                onSearchLocationClick = {
+                                    // Navigate to location search screen
+                                    navController.navigate("location_search")
+                                },
                                 onModeSelected = { mode -> viewModel.onWorkModeSelected(mode) },
                                 onBookingClick = { viewModel.onBookingClicked() },
                                 onCheckInClick = { viewModel.onCheckInClicked() }
@@ -263,11 +320,13 @@ fun AttendanceScreen(
                 }
             ) { paddingValues ->
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // Fullscreen Map dengan data dari ViewModel - Updated with WFO and WFH locations
+                    // Fullscreen Map dengan data dari ViewModel - Updated with WFO, WFH, and WFA locations
                     AttendanceMap(
                         modifier = Modifier.fillMaxSize(),
-                        wfoLocation = uiState.wfoLocation,        // WFO location
-                        wfhLocation = uiState.wfhLocation,        // WFH location
+                        wfoLocation = if (uiState.isWfaModeActive) null else uiState.wfoLocation, // Hide WFO when WFA active
+                        wfhLocation = if (uiState.isWfaModeActive) null else uiState.wfhLocation, // Hide WFH when WFA active
+                        wfaRecommendations = uiState.wfaRecommendations, // WFA recommendations
+                        selectedWfaLocation = uiState.selectedWfaLocation, // Selected WFA location
                         targetLocation = uiState.targetLocationMarker, // Keep for backward compatibility
                         currentUserLocation = uiState.currentUserLatitude?.let { lat ->
                             uiState.currentUserLongitude?.let { lng ->
@@ -275,6 +334,11 @@ fun AttendanceScreen(
                             }
                         },
                         onMarkerClick = { location -> viewModel.onMarkerClicked(location) },
+                        onWfaMarkerClick = { recommendation: WfaRecommendation ->
+                            viewModel.onWfaMarkerClicked(
+                                recommendation
+                            )
+                        }, // Handle WFA marker clicks
                         onMapReady = { mapView ->
                             mapViewInstance = mapView
                             // Notify ViewModel that map is ready for initial focus
@@ -304,6 +368,21 @@ fun AttendanceScreen(
                                 radius = "${selectedMarker.radius} meter",
                                 coordinates = "${selectedMarker.latitude}, ${selectedMarker.longitude}",
                                 onClose = { viewModel.onDismissMarkerInfo() }
+                            )
+                        }
+                    }
+
+                    // Display WFA marker details when clicked
+                    uiState.selectedWfaMarkerInfo?.let { selectedWfaMarker ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 80.dp, start = 16.dp, end = 16.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            MarkerViewWfa(
+                                recommendation = selectedWfaMarker,
+                                onClick = { viewModel.onDismissWfaMarkerInfo() }
                             )
                         }
                     }

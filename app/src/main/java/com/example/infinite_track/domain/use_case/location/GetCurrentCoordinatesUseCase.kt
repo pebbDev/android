@@ -1,19 +1,37 @@
 package com.example.infinite_track.domain.use_case.location
 
-import com.example.infinite_track.domain.repository.LocationRepository
+import com.example.infinite_track.data.soucre.local.room.UserDao
 import javax.inject.Inject
 
 /**
- * Use case untuk mendapatkan koordinat lokasi saat ini
+ * Use Case untuk mendapatkan koordinat pengguna saat ini
+ * Digunakan untuk proximity search dalam pencarian lokasi
+ * Default mengambil dari lokasi WFH yang tersimpan di Room Database
  */
 class GetCurrentCoordinatesUseCase @Inject constructor(
-    private val locationRepository: LocationRepository
+    private val userDao: UserDao
 ) {
+
     /**
-     * Mendapatkan koordinat lokasi saat ini
-     * @return Result berisi Pair latitude dan longitude atau error
+     * Mendapatkan koordinat pengguna saat ini
+     * Prioritas: Lokasi WFH dari Room Database -> Default Jakarta
+     * @return Result berisi Pair<latitude, longitude>
      */
     suspend operator fun invoke(): Result<Pair<Double, Double>> {
-        return locationRepository.getCurrentCoordinates()
+        return try {
+            // Coba ambil dari Room Database (lokasi WFH pengguna)
+            val userProfile = userDao.getUserProfile()
+
+            if (userProfile?.latitude != null && userProfile.longitude != null) {
+                // Gunakan koordinat WFH dari database
+                Result.success(Pair(userProfile.latitude, userProfile.longitude))
+            } else {
+                // Fallback ke koordinat default Jakarta jika tidak ada data WFH
+                Result.success(Pair(-6.2088, 106.8456)) // Jakarta coordinates
+            }
+        } catch (e: Exception) {
+            // Fallback ke koordinat default Jakarta jika terjadi error
+            Result.success(Pair(-6.2088, 106.8456)) // Jakarta coordinates
+        }
     }
 }

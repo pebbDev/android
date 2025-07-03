@@ -15,6 +15,7 @@ import com.example.infinite_track.presentation.screen.home.HomeScreen
 import com.example.infinite_track.presentation.screen.home.HomeViewModel
 import com.example.infinite_track.presentation.screen.home.details.DetailsMyAttendance
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
+import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.leave_request.my_leave.MyLeave
 import com.example.infinite_track.presentation.screen.leave_request.timeOff.TimeOffScreen
 import com.example.infinite_track.presentation.screen.profile.ProfileScreen
@@ -107,6 +108,18 @@ fun NavGraphBuilder.mainContentNavGraph(
     // Attendance Screen
     composable(Screen.Attendance.route) {
         AttendanceScreen(navController = navController)
+    }
+
+    // Location Search Screen - untuk pencarian lokasi attendance
+    composable(Screen.LocationSearch.route) {
+        LocationSearchScreen(
+            navController = navController,
+            onLocationSelected = {
+                // Handle location selection - bisa dikembangkan untuk menyimpan lokasi terpilih
+                // Untuk sementara, kembali ke AttendanceScreen
+                navController.navigateUp()
+            }
+        )
     }
 
     // Time Off Related Screens

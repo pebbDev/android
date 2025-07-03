@@ -34,8 +34,9 @@ android {
             useSupportLibrary = true
         }
 
-        // Add Mapbox access token to manifest
+        // Add Mapbox access token to manifest dan BuildConfig
         manifestPlaceholders["MAPBOX_PUBLIC_TOKEN"] = mapboxAccessToken
+        buildConfigField("String", "MAPBOX_PUBLIC_TOKEN", "\"$mapboxAccessToken\"")
     }
 
     buildTypes {

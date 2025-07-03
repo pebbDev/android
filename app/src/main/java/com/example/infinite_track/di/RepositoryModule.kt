@@ -2,16 +2,18 @@ package com.example.infinite_track.di
 
 import android.content.Context
 import android.util.Log
-import com.example.infinite_track.data.repository.LocationRepositoryImpl
+import com.example.infinite_track.data.repository.WfaRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceHistoryRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceRepositoryImpl
 import com.example.infinite_track.data.repository.auth.AuthRepositoryImpl
 import com.example.infinite_track.data.repository.contact.ContactRepositoryImpl
+import com.example.infinite_track.data.repository.location.LocationRepositoryImpl
 import com.example.infinite_track.data.repository.profile.ProfileRepositoryImpl
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.preferences.LocalizationPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
+import com.example.infinite_track.data.soucre.network.mapbox.MapboxApiService
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.repository.language.LocalizationRepositoryImpl
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
@@ -21,6 +23,7 @@ import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
+import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
@@ -96,8 +99,21 @@ object RepositoryModule {
     @Singleton
     fun provideLocationRepository(
         @ApplicationContext context: Context,
-        fusedLocationProviderClient: FusedLocationProviderClient
+        fusedLocationProviderClient: FusedLocationProviderClient,
+        mapboxApiService: MapboxApiService
     ): LocationRepository {
-        return LocationRepositoryImpl(context, fusedLocationProviderClient)
+        return LocationRepositoryImpl(
+            context,
+            fusedLocationProviderClient,
+            mapboxApiService
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideWfaRepository(
+        apiService: ApiService
+    ): WfaRepository {
+        return WfaRepositoryImpl(apiService)
     }
 }
