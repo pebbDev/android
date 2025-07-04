@@ -28,6 +28,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import com.google.android.gms.location.FusedLocationProviderClient
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -102,8 +103,11 @@ object UseCaseModule {
 
     // Provide the Get Current Coordinates Use Case
     @Provides
-    fun provideGetCurrentCoordinatesUseCase(userDao: UserDao): GetCurrentCoordinatesUseCase {
-        return GetCurrentCoordinatesUseCase(userDao)
+    fun provideGetCurrentCoordinatesUseCase(
+        fusedLocationProviderClient: FusedLocationProviderClient,
+        userDao: UserDao
+    ): GetCurrentCoordinatesUseCase {
+        return GetCurrentCoordinatesUseCase(fusedLocationProviderClient, userDao)
     }
 
     // Provide the Get Today Status Use Case

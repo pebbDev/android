@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.domain.model.attendance.Location
-import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
@@ -45,6 +44,7 @@ data class AttendanceScreenState(
     val selectedWfaLocation: WfaRecommendation? = null, // Selected WFA location
     val selectedWfaMarkerInfo: WfaRecommendation? = null, // For showing WFA marker details
     val isWfaModeActive: Boolean = false, // Flag for WFA mode
+    val isLoadingWfaRecommendations: Boolean = false, // Loading state for WFA recommendations
     val currentUserAddress: String = "",
     val currentUserLatitude: Double? = null,
     val currentUserLongitude: Double? = null,
@@ -53,16 +53,7 @@ data class AttendanceScreenState(
     // Map-specific properties
     val targetLocationMarker: Location? = null,
     val selectedMarkerInfo: Location? = null
-) {
-    // Convenience getter for UI components
-    val targetLocationInfo: TargetLocationInfo?
-        get() = targetLocation?.let { target ->
-            TargetLocationInfo(
-                description = target.description,
-                locationName = target.category
-            )
-        }
-}
+)
 
 /**
  * Simplified ViewModel that is fully reactive to geofence state
@@ -364,6 +355,9 @@ class AttendanceViewModel @Inject constructor(
 
                 Log.d(TAG, "Fetching WFA recommendations for location: $lat, $lng")
 
+                // Set loading state for WFA recommendations
+                _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = true)
+
                 getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
                     _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
 
@@ -381,6 +375,9 @@ class AttendanceViewModel @Inject constructor(
                     // Keep empty list on error
                     _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
                 }
+
+                // Reset loading state
+                _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = false)
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in fetchWfaRecommendations", e)
                 _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
@@ -474,35 +471,62 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Handle focus location button click
+     * This should ONLY focus on current user location, not work mode locations
+     * Always gets fresh location data when clicked
      */
     fun onFocusLocationClicked() {
+        Log.d(TAG, "=== FOCUS LOCATION BUTTON CLICKED ===")
+        Log.d(TAG, "Current work mode: ${_uiState.value.selectedWorkMode}")
+        Log.d(TAG, "Current WFH location: ${_uiState.value.wfhLocation}")
+        Log.d(TAG, "Getting fresh GPS coordinates...")
+
         viewModelScope.launch {
             try {
-                getCurrentCoordinatesUseCase().onSuccess { coordinates ->
+                // PENTING: Gunakan GPS real-time, bukan dari database
+                getCurrentCoordinatesUseCase(useRealTimeGPS = true).onSuccess { coordinates ->
                     val (latitude, longitude) = coordinates
 
-                    // Update state for immediate display
+                    Log.d(TAG, "=== FRESH GPS COORDINATES RECEIVED ===")
+                    Log.d(TAG, "GPS Real-time Latitude: $latitude")
+                    Log.d(TAG, "GPS Real-time Longitude: $longitude")
+                    Log.d(TAG, "WFH Latitude: ${_uiState.value.wfhLocation?.latitude}")
+                    Log.d(TAG, "WFH Longitude: ${_uiState.value.wfhLocation?.longitude}")
+
+                    // Pastikan koordinat berbeda dari WFH
+                    if (latitude == _uiState.value.wfhLocation?.latitude &&
+                        longitude == _uiState.value.wfhLocation?.longitude
+                    ) {
+                        Log.w(TAG, "WARNING: GPS coordinates sama dengan WFH location!")
+                        Log.w(TAG, "Ini mungkin karena GPS masih menggunakan cached location")
+                    }
+
+                    // Update state untuk immediate display
                     _uiState.value = _uiState.value.copy(
                         currentUserLatitude = latitude,
                         currentUserLongitude = longitude
                     )
 
                     // Send map animation event
+                    val focusPoint = Point.fromLngLat(longitude, latitude)
                     _mapEvent.send(
                         MapEvent.AnimateToLocation(
-                            point = Point.fromLngLat(longitude, latitude),
-                            zoomLevel = 15.0 // Default zoom level
+                            point = focusPoint,
+                            zoomLevel = 15.0
                         )
                     )
 
-                    Log.d(TAG, "Focus location - User position: $latitude, $longitude")
+                    Log.d(TAG, "=== MAP ANIMATION SENT ===")
+                    Log.d(TAG, "Focus point: ${focusPoint.latitude()}, ${focusPoint.longitude()}")
+                    Log.d(TAG, "This should be your CURRENT GPS location, NOT your home location!")
                 }.onFailure { exception ->
+                    Log.e(TAG, "=== GPS LOCATION FAILED ===")
+                    Log.e(TAG, "Failed to get current GPS location: ${exception.message}")
                     _mapEvent.send(MapEvent.ShowLocationError)
-                    Log.e(TAG, "Failed to get current location for focus", exception)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "=== UNEXPECTED ERROR ===")
+                Log.e(TAG, "Error in onFocusLocationClicked: ${e.message}")
                 _mapEvent.send(MapEvent.ShowLocationError)
-                Log.e(TAG, "Unexpected error in onFocusLocationClicked", e)
             }
         }
     }
@@ -558,10 +582,12 @@ class AttendanceViewModel @Inject constructor(
             )
 
             // Animate map to the selected location
-            _mapEvent.send(MapEvent.AnimateToLocation(
-                Point.fromLngLat(location.longitude, location.latitude),
-                15.0
-            ))
+            _mapEvent.send(
+                MapEvent.AnimateToLocation(
+                    Point.fromLngLat(location.longitude, location.latitude),
+                    15.0
+                )
+            )
         }
     }
 

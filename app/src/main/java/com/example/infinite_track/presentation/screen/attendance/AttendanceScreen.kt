@@ -386,6 +386,18 @@ fun AttendanceScreen(
                             )
                         }
                     }
+
+                    // Loading overlay for WFA recommendations
+                    if (uiState.isLoadingWfaRecommendations) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LoadingAnimation()
+                        }
+                    }
                 }
             }
         }
