@@ -90,18 +90,29 @@ class SearchViewModel @Inject constructor(
 
     /**
      * Get current user location for proximity search
+     * Menggunakan GPS real-time untuk proximity search yang akurat
      */
     private fun getCurrentLocation() {
         viewModelScope.launch {
             try {
-                getCurrentCoordinatesUseCase().onSuccess { coordinates ->
+                // PENTING: Gunakan GPS real-time untuk proximity search
+                getCurrentCoordinatesUseCase(useRealTimeGPS = true).onSuccess { coordinates ->
                     val (latitude, longitude) = coordinates
                     userLatitude = latitude
                     userLongitude = longitude
-                    Log.d(TAG, "User location updated: $latitude, $longitude")
+                    Log.d(TAG, "User GPS real-time location updated for search proximity: $latitude, $longitude")
                 }.onFailure { exception ->
-                    Log.w(TAG, "Failed to get user location for proximity search", exception)
-                    // Continue without proximity search
+                    Log.w(TAG, "Failed to get GPS real-time location, trying cached location", exception)
+                    // Fallback ke cached location
+                    getCurrentCoordinatesUseCase(useRealTimeGPS = false).onSuccess { coordinates ->
+                        val (latitude, longitude) = coordinates
+                        userLatitude = latitude
+                        userLongitude = longitude
+                        Log.d(TAG, "Using cached location for search proximity: $latitude, $longitude")
+                    }.onFailure { fallbackException ->
+                        Log.w(TAG, "Failed to get any location for proximity search", fallbackException)
+                        // Continue without proximity search
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Unexpected error getting user location", e)

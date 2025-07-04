@@ -272,16 +272,18 @@ class AttendanceViewModel @Inject constructor(
      */
     private suspend fun updateDisplayLocation() {
         try {
-            // Update current address for display
+            // Update current address for display - menggunakan Geocoding API yang sudah diperbaiki
             getCurrentAddressUseCase().onSuccess { address ->
                 _uiState.value = _uiState.value.copy(currentUserAddress = address)
                 Log.d(TAG, "Display address updated: $address")
             }.onFailure { exception ->
                 Log.w(TAG, "Failed to get display address", exception)
+                // Set fallback address jika gagal
+                _uiState.value = _uiState.value.copy(currentUserAddress = "Mengambil alamat...")
             }
 
-            // Update current coordinates for map display
-            getCurrentCoordinatesUseCase().onSuccess { coordinates ->
+            // Update current coordinates for map display - menggunakan database fallback untuk display
+            getCurrentCoordinatesUseCase(useRealTimeGPS = false).onSuccess { coordinates ->
                 val (latitude, longitude) = coordinates
                 _uiState.value = _uiState.value.copy(
                     currentUserLatitude = latitude,
@@ -345,42 +347,69 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Fetch WFA recommendations based on current user location
+     * Menggunakan GPS real-time, bukan lokasi WFH yang tersimpan
      */
     private fun fetchWfaRecommendations() {
         viewModelScope.launch {
             try {
-                // Use current user location as parameters
-                val lat = _uiState.value.currentUserLatitude ?: return@launch
-                val lng = _uiState.value.currentUserLongitude ?: return@launch
-
-                Log.d(TAG, "Fetching WFA recommendations for location: $lat, $lng")
+                Log.d(TAG, "Fetching WFA recommendations - getting fresh GPS location...")
 
                 // Set loading state for WFA recommendations
                 _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = true)
 
-                getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
-                    _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
+                // PENTING: Gunakan GPS real-time untuk WFA recommendations
+                getCurrentCoordinatesUseCase(useRealTimeGPS = true).onSuccess { coordinates ->
+                    val (lat, lng) = coordinates
 
-                    // Send event to zoom out and show all recommendations
-                    if (recommendations.isNotEmpty()) {
-                        val points =
-                            recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
-                        _mapEvent.send(MapEvent.AnimateToFitBounds(points))
-                        Log.d(TAG, "WFA recommendations fetched: ${recommendations.size} locations")
-                    } else {
-                        Log.w(TAG, "No WFA recommendations found")
+                    Log.d(TAG, "Using GPS real-time location for WFA: $lat, $lng")
+
+                    getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
+                        _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
+
+                        // Send event to zoom out and show all recommendations
+                        if (recommendations.isNotEmpty()) {
+                            val points =
+                                recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
+                            _mapEvent.send(MapEvent.AnimateToFitBounds(points))
+                            Log.d(TAG, "WFA recommendations fetched: ${recommendations.size} locations")
+                        } else {
+                            Log.w(TAG, "No WFA recommendations found for GPS location: $lat, $lng")
+                        }
+                    }.onFailure { exception ->
+                        Log.e(TAG, "Failed to fetch WFA recommendations", exception)
+                        // Keep empty list on error
+                        _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
                     }
+
                 }.onFailure { exception ->
-                    Log.e(TAG, "Failed to fetch WFA recommendations", exception)
-                    // Keep empty list on error
-                    _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
+                    Log.e(TAG, "Failed to get GPS location for WFA recommendations", exception)
+                    // Fallback to cached location if GPS fails
+                    val lat = _uiState.value.currentUserLatitude ?: return@launch
+                    val lng = _uiState.value.currentUserLongitude ?: return@launch
+
+                    Log.w(TAG, "GPS failed, using cached location for WFA: $lat, $lng")
+
+                    getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
+                        _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
+                        if (recommendations.isNotEmpty()) {
+                            val points = recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
+                            _mapEvent.send(MapEvent.AnimateToFitBounds(points))
+                            Log.d(TAG, "WFA recommendations fetched with cached location: ${recommendations.size} locations")
+                        }
+                    }.onFailure { exception ->
+                        Log.e(TAG, "Failed to fetch WFA recommendations with cached location", exception)
+                        _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
+                    }
                 }
 
                 // Reset loading state
                 _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = false)
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in fetchWfaRecommendations", e)
-                _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
+                _uiState.value = _uiState.value.copy(
+                    wfaRecommendations = emptyList(),
+                    isLoadingWfaRecommendations = false
+                )
             }
         }
     }
