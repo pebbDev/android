@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import com.example.infinite_track.BuildConfig
-import com.example.infinite_track.data.soucre.network.mapbox.MapboxApiService
+import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.data.soucre.network.response.search.MapboxSearchFeature
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.repository.LocationRepository
@@ -16,7 +16,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.util.UUID
 import javax.inject.Inject
 import kotlin.coroutines.resume
 

@@ -1,4 +1,4 @@
-package com.example.infinite_track.data.soucre.network.mapbox
+package com.example.infinite_track.data.soucre.network.retrofit
 
 import com.example.infinite_track.data.soucre.network.response.geocode.MapboxGeocodingResponse
 import com.example.infinite_track.data.soucre.network.response.search.MapboxSearchResponse

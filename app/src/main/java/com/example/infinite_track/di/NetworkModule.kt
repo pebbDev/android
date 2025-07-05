@@ -2,7 +2,7 @@ package com.example.infinite_track.di
 
 import android.os.Build
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
-import com.example.infinite_track.data.soucre.network.mapbox.MapboxApiService
+import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import dagger.Module
 import dagger.Provides
@@ -117,6 +117,6 @@ object NetworkModule {
         get() = if (isEmulator()) {
             "http://10.0.2.2:3005/"
         } else {
-            "http://192.168.23.197:3005/"
+            "http://192.168.184.197:3005/"
         }
 }

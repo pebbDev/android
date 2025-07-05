@@ -13,7 +13,7 @@ import com.example.infinite_track.data.soucre.local.preferences.AttendancePrefer
 import com.example.infinite_track.data.soucre.local.preferences.LocalizationPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
-import com.example.infinite_track.data.soucre.network.mapbox.MapboxApiService
+import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.repository.language.LocalizationRepositoryImpl
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
