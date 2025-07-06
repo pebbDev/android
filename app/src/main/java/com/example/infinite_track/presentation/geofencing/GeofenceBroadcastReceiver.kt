@@ -10,6 +10,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.worker.LocationEventWorker
 import com.example.infinite_track.utils.NotificationHelper
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
@@ -114,18 +115,14 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 .format(Date())
 
             // Show immediate notification to user
-            val message = when (eventType) {
-                "ENTER" -> "Anda telah memasuki area kerja"
-                "EXIT" -> "Anda telah meninggalkan area kerja"
-                else -> "Event lokasi: $eventType"
-            }
-            NotificationHelper.showGeofenceNotification(context, message)
+            val locationName = geofence.requestId // Use requestId as location name
+            NotificationHelper.showGeofenceNotification(context, eventType, locationName)
 
             // Prepare data for WorkManager
             val workData = Data.Builder()
                 .putString(LocationEventWorker.KEY_EVENT_TYPE, eventType)
                 .putInt(LocationEventWorker.KEY_LOCATION_ID, locationId)
-                .putString(LocationEventWorker.KEY_TIMESTAMP, timestamp)
+                .putString(LocationEventWorker.KEY_EVENT_TIMESTAMP, timestamp)
                 .build()
 
             // Create constraints - require network connection

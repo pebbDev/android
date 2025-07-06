@@ -15,7 +15,7 @@ object NotificationHelper {
     private const val CHANNEL_NAME = "Geofence Notifications"
 
     // Navigation destination constant - to be used by the navigation system
-    private const val NAVIGATION_DESTINATION_ATTENDANCE = "attendance_screen"
+//    private const val NAVIGATION_DESTINATION_ATTENDANCE = "attendance_screen"
 
     fun createNotificationChannel(context: Context) {
         val channel = NotificationChannel(
@@ -28,15 +28,22 @@ object NotificationHelper {
         notificationManager.createNotificationChannel(channel)
     }
 
-    fun showGeofenceNotification(context: Context, message: String) {
+    fun showGeofenceNotification(context: Context, eventType: String, locationName: String) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Generate message based on event type and location name
+        val message = when (eventType) {
+            "ENTER" -> "Anda telah memasuki area: $locationName"
+            "EXIT" -> "Anda telah meninggalkan area: $locationName"
+            else -> "Terdeteksi event lokasi."
+        }
 
         // Intent untuk membuka MainActivity dan menavigasi ke AttendanceScreen
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             // Add extra to indicate we should navigate to attendance screen
-            putExtra(NAVIGATION_DESTINATION_ATTENDANCE, true)
+            putExtra("navigate_to_attendance", true)
         }
         val pendingIntent = PendingIntent.getActivity(
             context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

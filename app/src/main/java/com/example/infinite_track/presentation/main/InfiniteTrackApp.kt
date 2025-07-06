@@ -10,18 +10,43 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.example.infinite_track.presentation.components.base.BaseLayout
+import com.example.infinite_track.presentation.navigation.AppNavigator
+import com.example.infinite_track.presentation.navigation.NavigationEvent
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.navigation.appNavGraph
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun InfiniteTrackApp(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    appNavigator: AppNavigator? = null
 ) {
     // Root level NavController - handles top-level navigation
     val navController = rememberNavController()
+
+    // Handle navigation events from AppNavigator
+    LaunchedEffect(appNavigator) {
+        appNavigator?.navigationEvents?.collectLatest { event ->
+            when (event) {
+                is NavigationEvent.NavigateToAttendance -> {
+                    // Navigate to attendance screen
+                    navController.navigate(Screen.Attendance.route) {
+                        // Optional: Clear back stack if needed
+                        launchSingleTop = true
+                    }
+                }
+                is NavigationEvent.NavigateToScreen -> {
+                    navController.navigate(event.route) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
 
     // State animation defined at the app level - this will persist across screen navigations
     val infiniteTransition = rememberInfiniteTransition(label = "infinite_rotation")
