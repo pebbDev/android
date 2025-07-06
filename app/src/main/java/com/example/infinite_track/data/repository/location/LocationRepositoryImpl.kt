@@ -226,6 +226,64 @@ class LocationRepositoryImpl @Inject constructor(
     }
 
     /**
+     * Reverse geocoding - convert coordinates to address
+     * @param latitude Latitude coordinate
+     * @param longitude Longitude coordinate
+     * @return Result containing LocationResult with address information or error
+     */
+    override suspend fun reverseGeocode(
+        latitude: Double,
+        longitude: Double
+    ): Result<LocationResult> {
+        return try {
+            Log.d(TAG, "Reverse geocoding coordinates: $latitude, $longitude")
+
+            val response = mapboxApiService.reverseGeocode(
+                longitude = longitude,
+                latitude = latitude,
+                accessToken = BuildConfig.MAPBOX_PUBLIC_TOKEN
+            )
+
+            if (response.features.isNotEmpty()) {
+                val feature = response.features.first()
+
+                // Extract address information from the response
+                val placeName = feature.properties.placeName
+                    ?: feature.properties.text
+                    ?: "Unknown Location"
+
+                val fullAddress = feature.properties.fullAddress
+                    ?: feature.properties.placeFormatted
+                    ?: feature.properties.placeName
+                    ?: "Address not available"
+
+                val locationResult = LocationResult(
+                    placeName = placeName,
+                    address = fullAddress,
+                    latitude = latitude,
+                    longitude = longitude
+                )
+
+                Log.d(TAG, "Reverse geocoding success: $locationResult")
+                Result.success(locationResult)
+            } else {
+                Log.w(TAG, "No features found in reverse geocoding response")
+                // Return basic location result with coordinates
+                val locationResult = LocationResult(
+                    placeName = "Unknown Location",
+                    address = "Lat: $latitude, Lng: $longitude",
+                    latitude = latitude,
+                    longitude = longitude
+                )
+                Result.success(locationResult)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Reverse geocoding failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Helper untuk membangun alamat dari context jika fullAddress tidak tersedia
      */
     private fun buildContextualAddress(feature: MapboxSearchFeature): String? {

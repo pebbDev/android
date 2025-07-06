@@ -49,17 +49,32 @@ interface MapboxApiService {
     ): MapboxSuggestResponse
 
     /**
-     * Reverse geocoding untuk mengubah koordinat menjadi alamat
+     * Reverse geocoding menggunakan Mapbox Geocoding API v6
      * Endpoint: https://api.mapbox.com/search/geocode/v6/reverse
-     * Khusus untuk mendapatkan alamat dari GPS coordinates
+     * Mengkonversi koordinat menjadi alamat
      */
     @GET("search/geocode/v6/reverse")
     suspend fun reverseGeocode(
         @Query("longitude") longitude: Double,
         @Query("latitude") latitude: Double,
         @Query("access_token") accessToken: String,
-        @Query("types") types: String = "address,place",
-        @Query("limit") limit: Int = 1,
-        @Query("language") language: String = "id"
+        @Query("language") language: String = "id",
+        @Query("country") country: String = "ID",
+        @Query("limit") limit: Int = 1
+    ): MapboxGeocodingResponse
+
+    /**
+     * Geocoding untuk mendapatkan alamat dari koordinat
+     * Endpoint: https://api.mapbox.com/search/geocode/v6/forward
+     * Menggunakan Geocoding API v6 untuk mendapatkan alamat lengkap
+     */
+    @GET("search/geocode/v6/forward")
+    suspend fun geocodePlace(
+        @Query("q") searchQuery: String,
+        @Query("access_token") accessToken: String,
+        @Query("language") language: String = "id",
+        @Query("country") country: String = "ID",
+        @Query("proximity") proximity: String? = null,
+        @Query("limit") limit: Int = 10
     ): MapboxGeocodingResponse
 }

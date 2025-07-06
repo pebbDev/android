@@ -22,6 +22,8 @@ import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.location
+import com.mapbox.maps.plugin.gestures.OnMapClickListener
+import com.mapbox.maps.CameraChangedCallback
 
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
@@ -36,7 +38,8 @@ fun AttendanceMap(
     currentUserLocation: Point? = null,
     onMarkerClick: (Location) -> Unit = {},
     onWfaMarkerClick: (WfaRecommendation) -> Unit = {}, // New callback for WFA markers
-    onMapReady: (MapView) -> Unit = {}    // Added callback for when map is ready
+    onMapReady: (MapView) -> Unit = {},    // Added callback for when map is ready
+    onCameraIdle: (Point) -> Unit = {}     // New callback for Pick on Map functionality
 ) {
     var mapView: MapView? by remember { mutableStateOf(null) }
 
@@ -47,7 +50,7 @@ fun AttendanceMap(
         )
     )
 
-    // Simplified effect to update map annotations when data changes
+    // Effect untuk update annotations saja - camera control diserahkan ke ViewModel
     LaunchedEffect(
         wfoLocation,
         wfhLocation,
@@ -60,7 +63,7 @@ fun AttendanceMap(
             // Small delay to ensure map is ready
             kotlinx.coroutines.delay(300)
 
-            // Use the unified MapUtils function to update all annotations
+            // Hanya update annotations, tidak ada logika kamera di sini
             MapUtils.updateMapAnnotations(
                 mapView = map,
                 wfoLocation = wfoLocation,
@@ -93,7 +96,29 @@ fun AttendanceMap(
                         gestures.pinchToZoomEnabled = true
                         location.enabled = true
 
-                        // Panggil callback onMapReady jika tersedia
+                        // Add camera change listener for Pick on Map functionality
+                        // Use a delayed approach to detect when camera stops moving
+                        var lastCameraChangeTime = 0L
+                        val cameraIdleDelay = 500L // 500ms delay to detect idle
+
+                        mapboxMap.subscribeCameraChanged { cameraChangedEventData ->
+                            lastCameraChangeTime = System.currentTimeMillis()
+
+                            // Post a delayed runnable to check if camera is still idle
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                if (System.currentTimeMillis() - lastCameraChangeTime >= cameraIdleDelay) {
+                                    // Camera has been idle for the specified delay
+                                    val centerPoint = mapboxMap.cameraState.center
+                                    onCameraIdle(centerPoint)
+                                    android.util.Log.d(
+                                        "AttendanceMap",
+                                        "Camera idle detected: ${centerPoint.latitude()}, ${centerPoint.longitude()}"
+                                    )
+                                }
+                            }, cameraIdleDelay)
+                        }
+
+                        // Berikan kontrol penuh kamera ke ViewModel melalui callback
                         onMapReady.invoke(this)
                     }
                 }, modifier = modifier.fillMaxSize()

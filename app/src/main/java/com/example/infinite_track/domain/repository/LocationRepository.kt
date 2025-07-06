@@ -30,4 +30,15 @@ interface LocationRepository {
         userLatitude: Double? = null,
         userLongitude: Double? = null
     ): Result<List<LocationResult>>
+
+    /**
+     * Reverse geocoding - convert coordinates to address
+     * @param latitude Latitude coordinate
+     * @param longitude Longitude coordinate
+     * @return Result containing LocationResult with address information or error
+     */
+    suspend fun reverseGeocode(
+        latitude: Double,
+        longitude: Double
+    ): Result<LocationResult>
 }

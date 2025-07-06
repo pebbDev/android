@@ -54,7 +54,7 @@ object MapUtils {
                     "office-marker",
                     context.bitmapFromVector(R.drawable.ic_marker_office)
                 )
-                style.addImage("home-marker", context.bitmapFromVector(R.drawable.ic_home))
+                style.addImage("home-marker", context.bitmapFromVector(R.drawable.ic_marker_home))
                 style.addImage(
                     "user-marker",
                     context.bitmapFromVector(R.drawable.ic_maps)

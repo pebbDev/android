@@ -12,6 +12,7 @@ import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCa
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
+import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.utils.UiState
@@ -32,7 +33,7 @@ import javax.inject.Inject
 
 /**
  * Simplified state object focused on reactive geofence integration
- * Now supports WFO, WFH, and WFA location markers
+ * Now supports WFO, WFH, and WFA location markers with Pick on Map functionality
  */
 data class AttendanceScreenState(
     val uiState: UiState<Unit> = UiState.Loading,
@@ -52,7 +53,10 @@ data class AttendanceScreenState(
     val selectedWorkMode: String = "Work From Office",
     // Map-specific properties
     val targetLocationMarker: Location? = null,
-    val selectedMarkerInfo: Location? = null
+    val selectedMarkerInfo: Location? = null,
+    // Pick on Map properties
+    val pickedLocation: LocationResult? = null, // Location picked by user on map
+    val isPickOnMapModeActive: Boolean = false // Flag for Pick on Map mode
 )
 
 /**
@@ -66,6 +70,7 @@ class AttendanceViewModel @Inject constructor(
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
     private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
     private val getWfaRecommendationsUseCase: GetWfaRecommendationsUseCase,
+    private val reverseGeocodeUseCase: ReverseGeocodeUseCase,
     private val attendancePreference: AttendancePreference,
     private val geofenceManager: GeofenceManager,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase
@@ -299,7 +304,7 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Handle work mode selection
+     * Handle work mode selection with Pick on Map integration
      */
     fun onWorkModeSelected(mode: String) {
         Log.d(TAG, "Work mode selected: $mode")
@@ -311,12 +316,17 @@ class AttendanceViewModel @Inject constructor(
         viewModelScope.launch {
             when (mode) {
                 "WFA", "Work From Anywhere" -> {
-                    // Reset previous WFA selection
-                    _uiState.value = _uiState.value.copy(selectedWfaLocation = null)
+                    // Reset previous WFA selection and enter Pick on Map mode
+                    _uiState.value = _uiState.value.copy(
+                        selectedWfaLocation = null,
+                        pickedLocation = null
+                    )
+                    onEnterPickOnMapMode()
                     fetchWfaRecommendations()
                 }
 
                 "Work From Home", "WFH" -> {
+                    onExitPickOnMapMode()
                     _uiState.value.wfhLocation?.let { wfhLocation ->
                         val wfhPoint = Point.fromLngLat(wfhLocation.longitude, wfhLocation.latitude)
                         _mapEvent.send(
@@ -330,6 +340,7 @@ class AttendanceViewModel @Inject constructor(
                 }
 
                 "Work From Office", "WFO" -> {
+                    onExitPickOnMapMode()
                     _uiState.value.wfoLocation?.let { wfoLocation ->
                         val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
                         _mapEvent.send(
@@ -371,7 +382,10 @@ class AttendanceViewModel @Inject constructor(
                             val points =
                                 recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
                             _mapEvent.send(MapEvent.AnimateToFitBounds(points))
-                            Log.d(TAG, "WFA recommendations fetched: ${recommendations.size} locations")
+                            Log.d(
+                                TAG,
+                                "WFA recommendations fetched: ${recommendations.size} locations"
+                            )
                         } else {
                             Log.w(TAG, "No WFA recommendations found for GPS location: $lat, $lng")
                         }
@@ -392,12 +406,20 @@ class AttendanceViewModel @Inject constructor(
                     getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
                         _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
                         if (recommendations.isNotEmpty()) {
-                            val points = recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
+                            val points =
+                                recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
                             _mapEvent.send(MapEvent.AnimateToFitBounds(points))
-                            Log.d(TAG, "WFA recommendations fetched with cached location: ${recommendations.size} locations")
+                            Log.d(
+                                TAG,
+                                "WFA recommendations fetched with cached location: ${recommendations.size} locations"
+                            )
                         }
                     }.onFailure { exception ->
-                        Log.e(TAG, "Failed to fetch WFA recommendations with cached location", exception)
+                        Log.e(
+                            TAG,
+                            "Failed to fetch WFA recommendations with cached location",
+                            exception
+                        )
                         _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
                     }
                 }
@@ -617,6 +639,95 @@ class AttendanceViewModel @Inject constructor(
                     15.0
                 )
             )
+        }
+    }
+
+    /**
+     * Enter Pick on Map mode - enables crosshair and map interaction
+     */
+    fun onEnterPickOnMapMode() {
+        Log.d(TAG, "Entering Pick on Map mode")
+        _uiState.value = _uiState.value.copy(
+            isPickOnMapModeActive = true,
+            pickedLocation = null // Reset any previously picked location
+        )
+    }
+
+    /**
+     * Exit Pick on Map mode - disables crosshair and map interaction
+     */
+    fun onExitPickOnMapMode() {
+        Log.d(TAG, "Exiting Pick on Map mode")
+        _uiState.value = _uiState.value.copy(
+            isPickOnMapModeActive = false,
+            pickedLocation = null
+        )
+    }
+
+    /**
+     * Handle map idle event - called when user stops moving the map
+     * Performs reverse geocoding for the center point of the map
+     */
+    fun onMapIdle(centerPoint: Point) {
+        // Only perform reverse geocoding if Pick on Map mode is active
+        if (!_uiState.value.isPickOnMapModeActive) return
+
+        viewModelScope.launch {
+            try {
+                Log.d(
+                    TAG,
+                    "Map idle detected in Pick on Map mode: ${centerPoint.latitude()}, ${centerPoint.longitude()}"
+                )
+
+                // Perform reverse geocoding for the center point
+                reverseGeocodeUseCase(
+                    latitude = centerPoint.latitude(),
+                    longitude = centerPoint.longitude()
+                ).onSuccess { locationResult ->
+                    Log.d(TAG, "Reverse geocoding successful: ${locationResult.placeName}")
+
+                    // Update the picked location
+                    _uiState.value = _uiState.value.copy(
+                        pickedLocation = locationResult,
+                        selectedWfaLocation = WfaRecommendation(
+                            name = locationResult.placeName,
+                            address = locationResult.address,
+                            latitude = locationResult.latitude,
+                            longitude = locationResult.longitude,
+                            score = 0.0,
+                            label = "Picked on Map",
+                            category = "Manual Selection",
+                            distance = 0.0
+                        )
+                    )
+                }.onFailure { exception ->
+                    Log.e(TAG, "Reverse geocoding failed", exception)
+
+                    // Fallback to basic location info with coordinates
+                    val fallbackLocation = LocationResult(
+                        placeName = "Unknown Location",
+                        address = "Lat: ${centerPoint.latitude()}, Lng: ${centerPoint.longitude()}",
+                        latitude = centerPoint.latitude(),
+                        longitude = centerPoint.longitude()
+                    )
+
+                    _uiState.value = _uiState.value.copy(
+                        pickedLocation = fallbackLocation,
+                        selectedWfaLocation = WfaRecommendation(
+                            name = fallbackLocation.placeName,
+                            address = fallbackLocation.address,
+                            latitude = fallbackLocation.latitude,
+                            longitude = fallbackLocation.longitude,
+                            score = 0.0,
+                            label = "Picked on Map",
+                            category = "Manual Selection",
+                            distance = 0.0
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error in onMapIdle", e)
+            }
         }
     }
 
