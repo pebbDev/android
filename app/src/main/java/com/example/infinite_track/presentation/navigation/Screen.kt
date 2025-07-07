@@ -27,6 +27,7 @@ sealed class  Screen(val route: String) {
     //See More
     data object DetailListTimeOff : Screen("home/detailsTimeOff")
     data object DetailMyAttendance : Screen("home/listMyAttendance")
+    data object DetailsMyBooking : Screen("home/detailsBooking")
     data object PaySlip : Screen("profile/PaySlip")
     data object MyDocument : Screen("profile/MyDocument")
 

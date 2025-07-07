@@ -70,7 +70,10 @@ interface ApiService {
 
     @GET("api/bookings/history")
     suspend fun getBookingHistory(
-        @Query("limit") limit: Int,
-        @Query("page") page: Int = 1
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 10,
+        @Query("sort_by") sortBy: String = "created_at",
+        @Query("sort_order") sortOrder: String = "DESC"
     ): BookingHistoryResponse
 }

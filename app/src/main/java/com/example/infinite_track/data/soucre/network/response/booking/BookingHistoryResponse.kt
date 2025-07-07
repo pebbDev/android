@@ -3,8 +3,8 @@ package com.example.infinite_track.data.soucre.network.response.booking
 import com.google.gson.annotations.SerializedName
 
 data class BookingHistoryResponse(
-    @SerializedName("status")
-    val status: String,
+    @SerializedName("success")
+    val success: Boolean,
     @SerializedName("message")
     val message: String,
     @SerializedName("data")
@@ -14,46 +14,80 @@ data class BookingHistoryResponse(
 data class BookingData(
     @SerializedName("bookings")
     val bookings: List<BookingItem>,
-    @SerializedName("total")
-    val total: Int,
-    @SerializedName("page")
-    val page: Int,
-    @SerializedName("limit")
-    val limit: Int
+    @SerializedName("pagination")
+    val pagination: PaginationData,
+    @SerializedName("filters")
+    val filters: FilterData
 )
 
 data class BookingItem(
-    @SerializedName("id")
-    val id: String?, // Make nullable
-    @SerializedName("location")
-    val location: BookingLocation?, // Make nullable
+    @SerializedName("booking_id")
+    val bookingId: Int,
+    @SerializedName("user_id")
+    val userId: Int,
+    @SerializedName("user_full_name")
+    val userFullName: String?,
+    @SerializedName("user_email")
+    val userEmail: String?,
+    @SerializedName("user_nip_nim")
+    val userNipNim: String?,
+    @SerializedName("user_position_name")
+    val userPositionName: String?,
+    @SerializedName("user_role_name")
+    val userRoleName: String?,
     @SerializedName("schedule_date")
-    val scheduleDate: String?, // Make nullable
+    val scheduleDate: String,
     @SerializedName("status")
-    val status: String?, // Make nullable
-    @SerializedName("suitability_score")
-    val suitabilityScore: Float?, // Make nullable
+    val status: String,
+    @SerializedName("location")
+    val location: BookingLocation,
     @SerializedName("notes")
-    val notes: String?, // Make nullable
+    val notes: String?,
+    @SerializedName("suitability_score")
+    val suitabilityScore: Float?,
+    @SerializedName("suitability_label")
+    val suitabilityLabel: String?,
     @SerializedName("created_at")
-    val createdAt: String?,
-    @SerializedName("updated_at")
-    val updatedAt: String?
+    val createdAt: String,
+    @SerializedName("processed_at")
+    val processedAt: String?,
+    @SerializedName("approved_by")
+    val approvedBy: Int?
 )
 
 data class BookingLocation(
-    @SerializedName("id")
-    val id: String,
-    @SerializedName("name")
-    val name: String,
-    @SerializedName("description")
-    val description: String,
-    @SerializedName("address")
-    val address: String,
+    @SerializedName("location_id")
+    val locationId: Int,
     @SerializedName("latitude")
     val latitude: Double,
     @SerializedName("longitude")
     val longitude: Double,
     @SerializedName("radius")
-    val radius: Int
+    val radius: Float,
+    @SerializedName("description")
+    val description: String
+)
+
+data class PaginationData(
+    @SerializedName("current_page")
+    val currentPage: Int,
+    @SerializedName("total_pages")
+    val totalPages: Int,
+    @SerializedName("total_items")
+    val totalItems: Int,
+    @SerializedName("items_per_page")
+    val itemsPerPage: Int,
+    @SerializedName("has_next")
+    val hasNext: Boolean,
+    @SerializedName("has_prev")
+    val hasPrev: Boolean
+)
+
+data class FilterData(
+    @SerializedName("status")
+    val status: String?,
+    @SerializedName("sort_by")
+    val sortBy: String,
+    @SerializedName("sort_order")
+    val sortOrder: String
 )

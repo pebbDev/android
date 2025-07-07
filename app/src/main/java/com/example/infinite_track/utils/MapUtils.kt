@@ -7,6 +7,7 @@ import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
+import com.mapbox.maps.MapboxDelicateApi
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.flyTo
 import com.mapbox.maps.plugin.annotation.annotations
@@ -167,13 +168,13 @@ object MapUtils {
     /**
      * Fit map bounds to show all regular locations
      */
+    @OptIn(MapboxDelicateApi::class)
     fun fitMapToBounds(mapView: MapView, locations: List<Location>) {
         if (locations.isEmpty()) return
 
         try {
             val points = locations.map { Point.fromLngLat(it.longitude, it.latitude) }
 
-            @Suppress("DEPRECATION")
             val cameraOptions = mapView.mapboxMap.cameraForCoordinates(
                 coordinates = points,
                 camera = CameraOptions.Builder().build(),
@@ -198,11 +199,11 @@ object MapUtils {
     /**
      * Fit map bounds to show all WFA recommendations
      */
+    @OptIn(MapboxDelicateApi::class)
     fun fitMapToWfaBounds(mapView: MapView, wfaPoints: List<Point>) {
         if (wfaPoints.isEmpty()) return
 
         try {
-            @Suppress("DEPRECATION")
             val cameraOptions = mapView.mapboxMap.cameraForCoordinates(
                 coordinates = wfaPoints,
                 camera = CameraOptions.Builder().build(),

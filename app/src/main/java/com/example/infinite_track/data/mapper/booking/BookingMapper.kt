@@ -8,12 +8,12 @@ import java.util.Locale
 
 fun BookingItem.toDomain(): BookingHistoryItem {
     return BookingHistoryItem(
-        id = this.id ?: "", // Handle null id
-        locationDescription = this.location?.description ?: "Unknown Location", // Handle null location
-        scheduleDate = formatScheduleDate(this.scheduleDate ?: ""),
-        status = formatStatus(this.status ?: "Unknown"),
-        notes = this.notes ?: "No notes provided",
-        suitabilityLabel = formatSuitabilityLabel(this.suitabilityScore ?: 0f)
+        id = this.bookingId.toString(),
+        locationDescription = this.location.description,
+        scheduleDate = formatScheduleDate(this.scheduleDate),
+        status = formatStatus(this.status),
+        notes = this.notes ?: "",
+        suitabilityLabel = this.suitabilityLabel ?: formatSuitabilityLabel(this.suitabilityScore ?: 0f)
     )
 }
 

@@ -12,10 +12,22 @@ class BookingRepositoryImpl @Inject constructor(
     private val apiService: ApiService
 ) : BookingRepository {
 
-    override suspend fun getBookingHistory(limit: Int): Result<List<BookingHistoryItem>> {
+    override suspend fun getBookingHistory(
+        status: String?,
+        page: Int,
+        limit: Int,
+        sortBy: String,
+        sortOrder: String
+    ): Result<List<BookingHistoryItem>> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = apiService.getBookingHistory(limit = limit)
+                val response = apiService.getBookingHistory(
+                    status = status,
+                    page = page,
+                    limit = limit,
+                    sortBy = sortBy,
+                    sortOrder = sortOrder
+                )
                 val bookingHistoryItems = response.data.bookings.map { it.toDomain() }
                 Result.success(bookingHistoryItems)
             } catch (e: Exception) {

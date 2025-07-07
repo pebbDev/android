@@ -1,6 +1,5 @@
 package com.example.infinite_track.presentation.navigation
 
-import androidx.navigation.NavController
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject

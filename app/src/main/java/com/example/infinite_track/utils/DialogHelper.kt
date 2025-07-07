@@ -2,7 +2,6 @@ package com.example.infinite_track.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
@@ -11,6 +10,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.toColorInt
 import cn.pedant.SweetAlert.SweetAlertDialog
 import com.example.infinite_track.R
 
@@ -108,7 +108,7 @@ object DialogHelper {
             alertType = SweetAlertDialog.PROGRESS_TYPE
         )
 
-        dialog.progressHelper.barColor = Color.parseColor("#8A3DFF")
+        dialog.progressHelper.barColor = "#8A3DFF".toColorInt()
 
         return dialog
     }
@@ -209,7 +209,7 @@ object DialogHelper {
             onCancel()
         }
 
-        dialog.progressHelper.barColor = Color.parseColor("#8A3DFF")
+        dialog.progressHelper.barColor = "#8A3DFF".toColorInt()
         dialog.show()
 
         // Apply custom styling

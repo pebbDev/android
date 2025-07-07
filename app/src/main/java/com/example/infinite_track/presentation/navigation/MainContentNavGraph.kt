@@ -37,7 +37,8 @@ fun NavGraphBuilder.mainContentNavGraph(
             viewModel = homeViewModel,
             navigateAttendance = { navController.safeNavigate(Screen.Attendance.route) },
             navigateTimeOffRequest = { navController.safeNavigate(Screen.TimeOffRequest.route) },
-            navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) }
+            navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) },
+            navigateToBookingHistory = { rootNavController.safeNavigate(Screen.DetailsMyBooking.route) }
         )
     }
 

@@ -57,6 +57,22 @@ class HomeViewModel @Inject constructor(
         MutableStateFlow<UiState<List<BookingHistoryItem>>>(UiState.Loading)
     val bookingHistoryState: StateFlow<UiState<List<BookingHistoryItem>>> = _bookingHistoryState
 
+    // Detailed booking history state for DetailsMyBooking screen
+    data class BookingHistoryDetailsState(
+        val isLoading: Boolean = true,
+        val bookings: List<BookingHistoryItem> = emptyList(),
+        val error: String? = null,
+        val selectedStatus: String? = null,
+        val currentPage: Int = 1,
+        val canLoadMore: Boolean = true,
+        val sortBy: String = "created_at",
+        val sortOrder: String = "DESC"
+    )
+
+    private val _bookingHistoryDetailsState = MutableStateFlow(BookingHistoryDetailsState())
+    val bookingHistoryDetailsState: StateFlow<BookingHistoryDetailsState> =
+        _bookingHistoryDetailsState
+
     init {
         fetchUserProfile()
         fetchTopAttendanceHistory()
@@ -123,7 +139,11 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _bookingHistoryState.value = UiState.Loading
             try {
-                val result = getBookingHistoryUseCase(limit = 3)
+                val result = getBookingHistoryUseCase(
+                    status = null, // Changed from "all" to null
+                    page = 1,
+                    limit = 3
+                )
                 result.onSuccess { bookingList ->
                     _bookingHistoryState.value = UiState.Success(bookingList)
                 }.onFailure { exception ->
@@ -150,5 +170,146 @@ class HomeViewModel @Inject constructor(
      */
     fun refreshAttendanceHistory() {
         fetchTopAttendanceHistory()
+    }
+
+    // ===== Detailed Booking History Functions =====
+
+    /**
+     * Function to handle status filter changes in DetailsMyBooking screen
+     */
+    fun onBookingStatusFilterChanged(newStatus: String) {
+        viewModelScope.launch {
+            val statusParam = if (newStatus == "all") null else newStatus
+
+            // Reset state with new filter
+            _bookingHistoryDetailsState.value = _bookingHistoryDetailsState.value.copy(
+                selectedStatus = statusParam,
+                currentPage = 1,
+                bookings = emptyList(),
+                isLoading = true,
+                error = null,
+                canLoadMore = true
+            )
+
+            // Load first page with new filter
+            loadBookingHistory(status = statusParam, page = 1)
+        }
+    }
+
+    /**
+     * Function to handle sorting changes
+     */
+    fun onBookingSortingChanged(sortBy: String, sortOrder: String) {
+        viewModelScope.launch {
+            val currentState = _bookingHistoryDetailsState.value
+
+            // Reset state with new sorting
+            _bookingHistoryDetailsState.value = currentState.copy(
+                sortBy = sortBy,
+                sortOrder = sortOrder,
+                currentPage = 1,
+                bookings = emptyList(),
+                isLoading = true,
+                error = null,
+                canLoadMore = true
+            )
+
+            // Load first page with new sorting
+            loadBookingHistory(
+                status = currentState.selectedStatus,
+                page = 1,
+                sortBy = sortBy,
+                sortOrder = sortOrder
+            )
+        }
+    }
+
+    /**
+     * Function to load more bookings for infinite scroll
+     */
+    fun loadMoreBookings() {
+        val currentState = _bookingHistoryDetailsState.value
+        if (!currentState.isLoading && currentState.canLoadMore) {
+            val nextPage = currentState.currentPage + 1
+            loadBookingHistory(
+                status = currentState.selectedStatus,
+                page = nextPage,
+                sortBy = currentState.sortBy,
+                sortOrder = currentState.sortOrder,
+                appendToExisting = true
+            )
+        }
+    }
+
+    /**
+     * Function to initialize detailed booking history (call when entering DetailsMyBooking screen)
+     */
+    fun initializeDetailedBookingHistory() {
+        val currentState = _bookingHistoryDetailsState.value
+        if (currentState.bookings.isEmpty() && !currentState.isLoading) {
+            loadBookingHistory(
+                status = currentState.selectedStatus,
+                page = 1,
+                sortBy = currentState.sortBy,
+                sortOrder = currentState.sortOrder
+            )
+        }
+    }
+
+    /**
+     * Private helper function to load booking history with filtering and pagination
+     */
+    private fun loadBookingHistory(
+        status: String? = null,
+        page: Int = 1,
+        sortBy: String = "created_at",
+        sortOrder: String = "DESC",
+        appendToExisting: Boolean = false
+    ) {
+        viewModelScope.launch {
+            val currentState = _bookingHistoryDetailsState.value
+
+            // Set loading state
+            _bookingHistoryDetailsState.value = currentState.copy(
+                isLoading = true,
+                error = null
+            )
+
+            try {
+                val result = getBookingHistoryUseCase(
+                    status = status,
+                    page = page,
+                    limit = 10,
+                    sortBy = sortBy,
+                    sortOrder = sortOrder
+                )
+
+                result.onSuccess { newBookings ->
+                    val updatedBookings = if (appendToExisting) {
+                        currentState.bookings + newBookings
+                    } else {
+                        newBookings
+                    }
+
+                    _bookingHistoryDetailsState.value = currentState.copy(
+                        isLoading = false,
+                        bookings = updatedBookings,
+                        error = null,
+                        currentPage = page,
+                        canLoadMore = newBookings.size >= 10 // Can load more if we got full page
+                    )
+                }.onFailure { exception ->
+                    _bookingHistoryDetailsState.value = currentState.copy(
+                        isLoading = false,
+                        error = exception.message ?: "Unknown error occurred"
+                    )
+                }
+            } catch (e: Exception) {
+                _bookingHistoryDetailsState.value = currentState.copy(
+                    isLoading = false,
+                    error = e.message ?: "Unknown error occurred"
+                )
+            }
+        }
     }
 }
