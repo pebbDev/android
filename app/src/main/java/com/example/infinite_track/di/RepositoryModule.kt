@@ -34,6 +34,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import com.google.gson.Gson
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -122,8 +123,9 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideBookingRepository(
-        apiService: ApiService
+        apiService: ApiService,
+        gson: Gson
     ): BookingRepository {
-        return BookingRepositoryImpl(apiService)
+        return BookingRepositoryImpl(apiService, gson)
     }
 }

@@ -10,4 +10,13 @@ interface BookingRepository {
         sortBy: String = "created_at",
         sortOrder: String = "DESC"
     ): Result<List<BookingHistoryItem>>
+
+    suspend fun submitBooking(
+        scheduleDate: String,
+        latitude: Double,
+        longitude: Double,
+        radius: Int,
+        description: String,
+        notes: String
+    ): Result<Unit>
 }

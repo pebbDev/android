@@ -15,6 +15,7 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinates
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
+import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -56,7 +57,8 @@ data class AttendanceScreenState(
     val selectedMarkerInfo: Location? = null,
     // Pick on Map properties
     val pickedLocation: LocationResult? = null, // Location picked by user on map
-    val isPickOnMapModeActive: Boolean = false // Flag for Pick on Map mode
+    val isPickOnMapModeActive: Boolean = false, // Flag for Pick on Map mode
+    val error: String? = null // Error message for network failures
 )
 
 /**
@@ -83,6 +85,7 @@ class AttendanceViewModel @Inject constructor(
         data class AnimateToLocation(val point: Point, val zoomLevel: Double) : MapEvent()
         data class AnimateToFitBounds(val points: List<Point>) : MapEvent()
         object ShowLocationError : MapEvent()
+        data class NavigateToWfaBooking(val route: String) : MapEvent()
     }
 
     // Main UI state
@@ -484,8 +487,15 @@ class AttendanceViewModel @Inject constructor(
         if (_uiState.value.isWfaModeActive) {
             _uiState.value.selectedWfaLocation?.let { wfaLocation ->
                 Log.d(TAG, "Booking WFA location: ${wfaLocation.name}")
-                // TODO: Implement WFA booking logic here
-                // You might want to navigate to a booking screen or show a booking dialog
+                // Navigate to WFA booking screen with location data (latitude and longitude only)
+                val route = Screen.WfaBooking.createRoute(
+                    latitude = wfaLocation.latitude,
+                    longitude = wfaLocation.longitude
+                    // address is no longer sent - WfaBookingViewModel will fetch it
+                )
+                viewModelScope.launch {
+                    _mapEvent.send(MapEvent.NavigateToWfaBooking(route))
+                }
             } ?: run {
                 Log.w(TAG, "Booking clicked in WFA mode but no location selected.")
             }
@@ -703,26 +713,12 @@ class AttendanceViewModel @Inject constructor(
                 }.onFailure { exception ->
                     Log.e(TAG, "Reverse geocoding failed", exception)
 
-                    // Fallback to basic location info with coordinates
-                    val fallbackLocation = LocationResult(
-                        placeName = "Unknown Location",
-                        address = "Lat: ${centerPoint.latitude()}, Lng: ${centerPoint.longitude()}",
-                        latitude = centerPoint.latitude(),
-                        longitude = centerPoint.longitude()
-                    )
-
+                    // Don't create fallback location, instead show error and keep picked location null
                     _uiState.value = _uiState.value.copy(
-                        pickedLocation = fallbackLocation,
-                        selectedWfaLocation = WfaRecommendation(
-                            name = fallbackLocation.placeName,
-                            address = fallbackLocation.address,
-                            latitude = fallbackLocation.latitude,
-                            longitude = fallbackLocation.longitude,
-                            score = 0.0,
-                            label = "Picked on Map",
-                            category = "Manual Selection",
-                            distance = 0.0
-                        )
+                        pickedLocation = null, // Ensure picked location is null
+                        selectedWfaLocation = null, // Clear any selected WFA location
+                        // Show error message in BottomSheet
+                        error = "Gagal mendapatkan detail lokasi. Periksa koneksi Anda."
                     )
                 }
             } catch (e: Exception) {

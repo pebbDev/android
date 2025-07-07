@@ -2,8 +2,10 @@ package com.example.infinite_track.di
 
 import android.os.Build
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
-import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
+import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -105,6 +107,15 @@ object NetworkModule {
     @Singleton
     fun provideMapboxApiService(@Named("mapbox") retrofit: Retrofit): MapboxApiService {
         return retrofit.create(MapboxApiService::class.java)
+    }
+
+    // Provide Gson instance for dependency injection
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return GsonBuilder()
+            .setLenient()
+            .create()
     }
 
     // Helper method for reliable emulator detection that worked for you

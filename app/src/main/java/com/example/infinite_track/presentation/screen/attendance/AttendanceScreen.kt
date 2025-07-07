@@ -167,6 +167,15 @@ fun AttendanceScreen(
                         "Failed to get current location for focus"
                     )
                 }
+
+                is AttendanceViewModel.MapEvent.NavigateToWfaBooking -> {
+                    // Navigate to WFA booking screen
+                    navController.navigate(event.route)
+                    android.util.Log.d(
+                        "AttendanceScreen",
+                        "Navigating to WFA booking screen with route: ${event.route}"
+                    )
+                }
             }
         }
     }

@@ -4,9 +4,15 @@ import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import androidx.navigation.navArgument
 import com.example.infinite_track.data.soucre.dummy.dummyTimeOff
+import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
+import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
+import com.example.infinite_track.presentation.screen.booking.WfaBookingScreen
+import com.example.infinite_track.presentation.screen.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.contact.ContactScreen
 import com.example.infinite_track.presentation.screen.contact.ContactsViewModel
 import com.example.infinite_track.presentation.screen.history.HistoryScreen
@@ -15,8 +21,6 @@ import com.example.infinite_track.presentation.screen.home.HomeScreen
 import com.example.infinite_track.presentation.screen.home.HomeViewModel
 import com.example.infinite_track.presentation.screen.home.details.DetailsMyAttendance
 import com.example.infinite_track.presentation.screen.home.details.DetailsMyBooking
-import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
-import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.leave_request.my_leave.MyLeave
 import com.example.infinite_track.presentation.screen.leave_request.timeOff.TimeOffScreen
 import com.example.infinite_track.presentation.screen.profile.ProfileScreen
@@ -173,6 +177,21 @@ fun NavGraphBuilder.mainContentNavGraph(
             onBackClick = {
                 navController.popBackStack()
             }
+        )
+    }
+
+    // WFA Booking Screen
+    composable(
+        route = Screen.WfaBooking.route,
+        arguments = listOf(
+            navArgument("latitude") { type = NavType.FloatType },
+            navArgument("longitude") { type = NavType.FloatType }
+        )
+    ) { backStackEntry ->
+        val viewModel: WfaBookingViewModel = hiltViewModel()
+        WfaBookingScreen(
+            viewModel = viewModel,
+            navController = navController
         )
     }
 

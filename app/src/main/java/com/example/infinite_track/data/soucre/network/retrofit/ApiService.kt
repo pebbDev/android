@@ -4,6 +4,7 @@ import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
+import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
@@ -12,6 +13,7 @@ import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResp
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
+import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
@@ -76,4 +78,9 @@ interface ApiService {
         @Query("sort_by") sortBy: String = "created_at",
         @Query("sort_order") sortOrder: String = "DESC"
     ): BookingHistoryResponse
+
+    @POST("api/bookings")
+    suspend fun submitWfaBooking(
+        @Body request: BookingRequest
+    ): BookingResponse
 }
