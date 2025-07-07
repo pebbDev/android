@@ -14,6 +14,7 @@ import com.example.infinite_track.presentation.screen.history.HistoryViewModel
 import com.example.infinite_track.presentation.screen.home.HomeScreen
 import com.example.infinite_track.presentation.screen.home.HomeViewModel
 import com.example.infinite_track.presentation.screen.home.details.DetailsMyAttendance
+import com.example.infinite_track.presentation.screen.home.details.DetailsMyBooking
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.leave_request.my_leave.MyLeave
@@ -38,7 +39,7 @@ fun NavGraphBuilder.mainContentNavGraph(
             navigateAttendance = { navController.safeNavigate(Screen.Attendance.route) },
             navigateTimeOffRequest = { navController.safeNavigate(Screen.TimeOffRequest.route) },
             navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) },
-            navigateToBookingHistory = { rootNavController.safeNavigate(Screen.DetailsMyBooking.route) }
+            navigateToBookingHistory = { navController.safeNavigate(Screen.DetailsMyBooking.route) }
         )
     }
 
@@ -162,6 +163,16 @@ fun NavGraphBuilder.mainContentNavGraph(
     composable(Screen.MyDocument.route) {
         MyDocumentScreen(
             onBackClick = { navController.popBackStack() }
+        )
+    }
+
+    // Details My Booking Screen - moved from AppNavGraph to MainContentNavGraph
+    composable(Screen.DetailsMyBooking.route) {
+        DetailsMyBooking(
+            viewModel = hiltViewModel(),
+            onBackClick = {
+                navController.popBackStack()
+            }
         )
     }
 

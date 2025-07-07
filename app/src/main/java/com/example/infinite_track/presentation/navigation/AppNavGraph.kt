@@ -9,7 +9,6 @@ import com.example.infinite_track.presentation.main.MainScreen
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.auth.LoginScreen
-import com.example.infinite_track.presentation.screen.booking.DetailsMyBooking
 import com.example.infinite_track.presentation.screen.splash.SplashScreen
 
 fun NavGraphBuilder.appNavGraph(
@@ -59,16 +58,6 @@ fun NavGraphBuilder.appNavGraph(
             onLocationSelected = {
                 // Handle location selection - bisa dikembangkan untuk menyimpan lokasi terpilih
                 // Untuk sementara, kembali ke AttendanceScreen
-                navController.navigateUp()
-            }
-        )
-    }
-
-    // Details My Booking Screen
-    composable(Screen.DetailsMyBooking.route) {
-        DetailsMyBooking(
-            viewModel = hiltViewModel(),
-            onBackClick = {
                 navController.navigateUp()
             }
         )

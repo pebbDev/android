@@ -1,4 +1,4 @@
-package com.example.infinite_track.presentation.screen.booking
+package com.example.infinite_track.presentation.screen.home.details
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +74,7 @@ fun DetailsMyBooking(
             InfiniteTracButtonBack(
                 title = "Riwayat Booking",
                 navigationBack = onBackClick,
-                modifier = Modifier.padding(top = 24.dp) // Add proper status bar spacing
+                modifier = Modifier.padding(top = 32.dp) // Add proper status bar spacing
             )
         }
     ) { paddingValues ->
@@ -84,14 +84,7 @@ fun DetailsMyBooking(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
 
-            // Header with filter controls - Updated style
-            Text(
-                text = "Riwayat Booking WFA",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
