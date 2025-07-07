@@ -39,120 +39,12 @@ fun getMimeType(filePath: String): String {
     }
 }
 
-fun String.toDate(): Date? {
-    return try {
-        val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        format.parse(this)
-    } catch (e: ParseException) {
-        null
-    }
-}
-
-fun Date.toFormattedDate(): String {
-    val format = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-    return format.format(this)
-}
-
-
-
-fun formatToday(): String {
-    return java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH))
-}
-
 fun updateAppLanguage(context: Context, language: String) {
     val locale = Locale(language)
     Locale.setDefault(locale)
     val config = Configuration(context.resources.configuration)
     config.setLocale(locale)
     context.resources.updateConfiguration(config, context.resources.displayMetrics)
-}
-
-@Composable
-fun AppLanguageUpdater(language: String) {
-    val context = LocalContext.current
-    LaunchedEffect(language) {
-        updateAppLanguage(context, language)
-    }
-}
-
-@Composable
-fun RequestLocationPermission(onPermissionGranted: () -> Unit, onPermissionDenied: () -> Unit) {
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            onPermissionGranted()
-        } else {
-            onPermissionDenied()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        launcher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
-    }
-}
-
-
-fun filterByName(query: String, allData: List<DataLeave>): List<DataLeave> {
-    return if (query.isNotEmpty()) {
-        allData.filter {
-            it.userName?.lowercase()?.contains(query.lowercase()) == true ||
-                    it.address?.lowercase()?.contains(query.lowercase()) == true
-        }
-    } else {
-        allData
-    }
-}
-
-@SuppressLint("SimpleDateFormat")
-fun filterByDateRange(
-    dateRange: Pair<Date?, Date?>,
-    allData: List<DataLeave>
-): List<DataLeave> {
-    val (startDate, endDate) = dateRange
-    val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-
-    return if (startDate != null || endDate != null) {
-        allData.filter { dataLeave ->
-            val start = dataLeave.startDate?.let { formatApiDateHome(it) }
-            val end = dataLeave.endDate?.let { formatApiDateHome(it) }
-
-            val startTime = start?.let { if (it.isNotEmpty()) dateFormat.parse(it) else null }
-            val endTime = end?.let { if (it.isNotEmpty()) dateFormat.parse(it) else null }
-
-            (startDate == null || (startTime != null && startTime.after(startDate))) &&
-                    (endDate == null || (endTime != null && endTime.before(endDate)))
-        }
-    } else {
-        allData
-    }
-}
-
-fun formatDate(dateString: String): String {
-    // Format input untuk tanggal lengkap (dengan waktu) dan tanggal tanpa waktu
-    val inputFormatWithTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale("id", "ID"))
-    val inputFormatWithoutTime = SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID"))
-
-    // Format output yang diinginkan
-    val outputFormat = SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID"))
-
-    // Mencoba untuk parsing dengan kedua format input
-    val date: Date? = try {
-        // Pertama coba parsing dengan format lengkap (dengan waktu)
-        inputFormatWithTime.parse(dateString)
-    } catch (e: Exception) {
-        try {
-            // Jika gagal, coba parsing dengan format tanpa waktu
-            inputFormatWithoutTime.parse(dateString)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    // Jika parsing berhasil, format ulang ke output yang diinginkan
-    return date?.let {
-        outputFormat.format(it)
-    } ?: "Invalid Date"  // Jika parsing gagal, kembalikan "Invalid Date"
 }
 
 fun openWhatsApp(context: Context, phoneNumber: String, messageWA: String) {

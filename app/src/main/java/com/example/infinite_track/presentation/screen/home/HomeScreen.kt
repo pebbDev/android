@@ -27,10 +27,12 @@ fun HomeScreen(
     navigateAttendance: () -> Unit = {},
     navigateTimeOffRequest: () -> Unit = {},
     navigateListMyAttendance: () -> Unit = {},
+    navigateToBookingHistory: () -> Unit = {},
 ) {
     // Collect all state from centralized HomeViewModel
     val userProfile by viewModel.userProfileState.collectAsState()
     val attendanceState by viewModel.topAttendanceHistoryState.collectAsState()
+    val bookingHistoryState by viewModel.bookingHistoryState.collectAsState()
     val annualBalance by viewModel.annualBalance.collectAsState()
     val annualUsed by viewModel.annualUsed.collectAsState()
     val currentLocation by viewModel.currentAddressState.collectAsState()
@@ -59,29 +61,32 @@ fun HomeScreen(
                     ) {
                         when (userProfile?.roleName) {
                             "Internship" -> {
-                                // Use the InternshipContent with live data from API
+                                // Use InternshipContent with both attendance and booking history data
                                 InternshipContent(
                                     user = userProfile,
-                                    summaryData = internshipSummary, // Pass the nullable summary directly
+                                    summaryData = internshipSummary,
                                     currentLocation = currentLocation,
                                     attendanceState = attendanceState,
-                                    navigateToListMyAttendance = navigateListMyAttendance
+                                    bookingHistoryState = bookingHistoryState,
+                                    navigateToListMyAttendance = navigateListMyAttendance,
+                                    navigateToBookingHistory = navigateToBookingHistory
                                 )
                             }
 
                             "Admin", "Employee", "Management" -> {
-                                // Pass all required state to the "dumb" component
+                                // Use EmployeeAndManagerComponent with both attendance and booking history data
                                 EmployeeAndManagerComponent(
                                     user = userProfile,
                                     attendanceState = attendanceState,
+                                    bookingHistoryState = bookingHistoryState,
                                     annualBalance = annualBalance,
                                     annualUsed = annualUsed,
                                     currentLocation = currentLocation,
                                     isLoading = isLoading,
                                     navigateAttendance = navigateAttendance,
                                     navigateTimeOffRequest = navigateTimeOffRequest,
-//                                    navigateListTimeOff = navigateListTimeOff,
-                                    navigateListMyAttendance = navigateListMyAttendance
+                                    navigateListMyAttendance = navigateListMyAttendance,
+                                    navigateToBookingHistory = navigateToBookingHistory
                                 )
                             }
 

@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.core.graphics.get
+import androidx.core.graphics.scale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.tensorflow.lite.Interpreter
@@ -17,14 +19,11 @@ import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import javax.inject.Inject
 import javax.inject.Singleton
-import androidx.core.graphics.scale
-import androidx.core.graphics.get
 
 /**
  * Processor for generating face embeddings from profile photos
  * Encapsulates all TensorFlow Lite operations for face recognition
  */
-@Suppress("UNREACHABLE_CODE")
 @Singleton
 class FaceProcessor @Inject constructor(
     private val appContext: Context
@@ -52,41 +51,42 @@ class FaceProcessor @Inject constructor(
      * @param photoUrl URL of the user's profile photo
      * @return Result containing ByteArray embedding or error
      */
-    suspend fun generateEmbedding(photoUrl: String): Result<ByteArray> = withContext(Dispatchers.IO) {
-        try {
-            if (photoUrl.isBlank()) {
-                return@withContext Result.failure(Exception("Photo URL is empty"))
+    suspend fun generateEmbedding(photoUrl: String): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                if (photoUrl.isBlank()) {
+                    return@withContext Result.failure(Exception("Photo URL is empty"))
+                }
+
+                val tflite = interpreter ?: return@withContext Result.failure(
+                    Exception("TensorFlow Lite interpreter not initialized")
+                )
+
+                // 1. Download image from URL
+                val bitmap = downloadImage(photoUrl) ?: return@withContext Result.failure(
+                    Exception("Failed to download or process image")
+                )
+
+                // 2. Resize and preprocess the image
+                val processedBitmap = preprocessImage(bitmap)
+
+                // 3. Convert bitmap to input tensor
+                val inputBuffer = convertBitmapToByteBuffer(processedBitmap)
+
+                // 4. Run inference to get face embedding
+                val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
+                tflite.run(inputBuffer, outputBuffer)
+
+                // 5. Convert FloatArray to ByteArray
+                val embedding = convertFloatsToBytes(outputBuffer[0])
+
+                // 6. Return success result with embedding
+                Result.success(embedding)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error generating face embedding", e)
+                Result.failure(e)
             }
-
-            val tflite = interpreter ?: return@withContext Result.failure(
-                Exception("TensorFlow Lite interpreter not initialized")
-            )
-
-            // 1. Download image from URL
-            val bitmap = downloadImage(photoUrl) ?: return@withContext Result.failure(
-                Exception("Failed to download or process image")
-            )
-
-            // 2. Resize and preprocess the image
-            val processedBitmap = preprocessImage(bitmap)
-
-            // 3. Convert bitmap to input tensor
-            val inputBuffer = convertBitmapToByteBuffer(processedBitmap)
-
-            // 4. Run inference to get face embedding
-            val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
-            tflite.run(inputBuffer, outputBuffer)
-
-            // 5. Convert FloatArray to ByteArray
-            val embedding = convertFloatsToBytes(outputBuffer[0])
-
-            // 6. Return success result with embedding
-            Result.success(embedding)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error generating face embedding", e)
-            Result.failure(e)
         }
-    }
 
     /**
      * Loads the TensorFlow Lite model file from assets

@@ -32,7 +32,8 @@ class CheckSessionUseCase @Inject constructor(
             // If photoUpdatedAt has changed or face embedding is missing, generate new embedding
             if (currentUser != null &&
                 (newUserData.photoUpdatedAt != currentUser.photoUpdatedAt ||
-                 currentUser.faceEmbedding == null)) {
+                        currentUser.faceEmbedding == null)
+            ) {
 
                 // Process face image to get embedding
                 val embeddingResult = newUserData.photoUrl?.let { photoUrl ->

@@ -6,6 +6,7 @@ import com.example.infinite_track.data.repository.WfaRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceHistoryRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceRepositoryImpl
 import com.example.infinite_track.data.repository.auth.AuthRepositoryImpl
+import com.example.infinite_track.data.repository.booking.BookingRepositoryImpl
 import com.example.infinite_track.data.repository.contact.ContactRepositoryImpl
 import com.example.infinite_track.data.repository.location.LocationRepositoryImpl
 import com.example.infinite_track.data.repository.profile.ProfileRepositoryImpl
@@ -13,12 +14,13 @@ import com.example.infinite_track.data.soucre.local.preferences.AttendancePrefer
 import com.example.infinite_track.data.soucre.local.preferences.LocalizationPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
-import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
+import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.data.soucre.repository.language.LocalizationRepositoryImpl
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
@@ -115,5 +117,13 @@ object RepositoryModule {
         apiService: ApiService
     ): WfaRepository {
         return WfaRepositoryImpl(apiService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBookingRepository(
+        apiService: ApiService
+    ): BookingRepository {
+        return BookingRepositoryImpl(apiService)
     }
 }

@@ -35,18 +35,24 @@ import com.example.infinite_track.R
 import com.example.infinite_track.presentation.components.calendar.Date
 import com.example.infinite_track.presentation.components.profile_textfield.ProfileTextFieldComponent
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
+import com.example.infinite_track.presentation.components.textfield.NumberTextFieldComponent
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RemoteWorkFormDialog(
+fun WfaBookingDialog(
     showDialog: Boolean,
     fullName: String,
     division: String,
+    address: String,
+    radius: String,
+    description: String,
     schedule: String,
     notes: String,
+    onRadiusChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
     onScheduleChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
@@ -67,7 +73,7 @@ fun RemoteWorkFormDialog(
                     CenterAlignedTopAppBar(
                         title = {
                             Text(
-                                "Izin Bekerja Jarak Jauh",
+                                "WFA Booking Request",
                                 style = headline4,
                                 fontWeight = FontWeight.Bold
                             )
@@ -126,8 +132,43 @@ fun RemoteWorkFormDialog(
                         )
                     }
 
+                    // Informasi Lokasi
+                    item {
+                        Text(
+                            text = "Informasi Lokasi",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ProfileTextFieldComponent(
+                            label = "Address",
+                            value = address,
+                            onValueChange = { /* Read-only field */ },
+                            enabled = false // Tidak bisa diubah
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        NumberTextFieldComponent(
+                            label = "Radius (meters)",
+                            value = radius,
+                            onValueChange = onRadiusChange,
+                            placeholder = "Enter radius in meters"
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        InfiniteTrackTextArea(
+                            label = "Location Description",
+                            value = description,
+                            onValueChange = onDescriptionChange
+                        )
+                    }
+
                     // Jadwal
                     item {
+                        Text(
+                            text = "Jadwal",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Date(
                             label = "Schedule",
                             initialDate = schedule,
@@ -156,26 +197,33 @@ fun RemoteWorkFormDialog(
 
 @Preview(backgroundColor = 0xFFFF1121, showBackground = true)
 @Composable
-fun RemoteWorkFormDialogPreview() {
+fun WfaBookingDialogPreview() {
     Infinite_TrackTheme {
         // Contoh state management untuk preview
         var showDialog by remember { mutableStateOf(true) }
+        var radius by remember { mutableStateOf("1000") }
+        var description by remember { mutableStateOf("") }
         var schedule by remember { mutableStateOf("2025-06-15") }
         var notes by remember { mutableStateOf("") }
 
         // Tombol untuk menampilkan dialog (dalam aplikasi nyata)
-        RemoteWorkFormDialog(
+        WfaBookingDialog(
             showDialog = showDialog,
             fullName = "Febriyadi",
             division = "Android Developer",
+            address = "Jl. Sudirman No. 123, Jakarta Selatan",
+            radius = radius,
+            description = description,
             schedule = schedule,
             notes = notes,
+            onRadiusChange = { radius = it },
+            onDescriptionChange = { description = it },
             onScheduleChange = { schedule = it },
             onNotesChange = { notes = it },
             onDismissRequest = { showDialog = false },
             onSendClick = {
                 // Logika untuk mengirim data
-                println("Data dikirim: Jadwal=$schedule, Catatan=$notes")
+                println("Data dikirim: Radius=$radius, Description=$description, Jadwal=$schedule, Catatan=$notes")
                 showDialog = false
             }
         )

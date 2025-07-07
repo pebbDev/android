@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.model.booking.BookingHistoryItem
 import com.example.infinite_track.domain.model.dashboard.InternshipSummary
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
 import com.example.infinite_track.domain.use_case.dashboard.GetInternshipDashboardDataUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
@@ -21,7 +23,8 @@ class HomeViewModel @Inject constructor(
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
     private val getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase,
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
-    private val getInternshipDashboardDataUseCase: GetInternshipDashboardDataUseCase
+    private val getInternshipDashboardDataUseCase: GetInternshipDashboardDataUseCase,
+    private val getBookingHistoryUseCase: GetBookingHistoryUseCase
 ) : ViewModel() {
 
     // User profile state
@@ -49,12 +52,18 @@ class HomeViewModel @Inject constructor(
     private val _annualUsed = MutableStateFlow(5)
     val annualUsed: StateFlow<Int> = _annualUsed
 
+    // Booking history state for WFA
+    private val _bookingHistoryState =
+        MutableStateFlow<UiState<List<BookingHistoryItem>>>(UiState.Loading)
+    val bookingHistoryState: StateFlow<UiState<List<BookingHistoryItem>>> = _bookingHistoryState
+
     init {
         fetchUserProfile()
         fetchTopAttendanceHistory()
         fetchCurrentAddress()
         loadDummyLeaveData()
         fetchInternshipDashboardData()
+        fetchTopBookingHistory()
     }
 
     private fun fetchUserProfile() {
@@ -76,7 +85,8 @@ class HomeViewModel @Inject constructor(
             ).onSuccess { historyPage ->
                 _topAttendanceHistoryState.value = UiState.Success(historyPage.records)
             }.onFailure { error ->
-                _topAttendanceHistoryState.value = UiState.Error(error.message ?: "Unknown error occurred")
+                _topAttendanceHistoryState.value =
+                    UiState.Error(error.message ?: "Unknown error occurred")
             }
         }
     }
@@ -105,6 +115,23 @@ class HomeViewModel @Inject constructor(
             }.onFailure {
                 // On failure, just leave the state as null
                 _internshipSummaryState.value = null
+            }
+        }
+    }
+
+    private fun fetchTopBookingHistory() {
+        viewModelScope.launch {
+            _bookingHistoryState.value = UiState.Loading
+            try {
+                val result = getBookingHistoryUseCase(limit = 3)
+                result.onSuccess { bookingList ->
+                    _bookingHistoryState.value = UiState.Success(bookingList)
+                }.onFailure { exception ->
+                    _bookingHistoryState.value =
+                        UiState.Error(exception.message ?: "Unknown error occurred")
+                }
+            } catch (e: Exception) {
+                _bookingHistoryState.value = UiState.Error(e.message ?: "Unknown error occurred")
             }
         }
     }

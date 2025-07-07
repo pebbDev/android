@@ -5,6 +5,7 @@ import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
@@ -15,6 +16,7 @@ import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
 import com.example.infinite_track.domain.use_case.contact.GetContactsUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
 import com.example.infinite_track.domain.use_case.language.GetSelectedLanguageUseCase
@@ -24,11 +26,11 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinates
 import com.example.infinite_track.domain.use_case.location.SearchLocationUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
+import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import com.google.android.gms.location.FusedLocationProviderClient
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -128,5 +130,13 @@ object UseCaseModule {
     @Provides
     fun provideSearchLocationUseCase(locationRepository: LocationRepository): SearchLocationUseCase {
         return SearchLocationUseCase(locationRepository)
+    }
+
+    // Provide the Get Booking History Use Case
+    @Provides
+    fun provideGetBookingHistoryUseCase(
+        bookingRepository: BookingRepository
+    ): GetBookingHistoryUseCase {
+        return GetBookingHistoryUseCase(bookingRepository)
     }
 }

@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.screen.home.content
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,8 +19,10 @@ import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.model.booking.BookingHistoryItem
 import com.example.infinite_track.presentation.components.button.SeeAllButton
 import com.example.infinite_track.presentation.components.cards.AttendanceHistoryC
+import com.example.infinite_track.presentation.components.cards.BookingHistoryCard
 import com.example.infinite_track.presentation.components.cards.MenuCard
 import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
@@ -27,9 +30,6 @@ import com.example.infinite_track.presentation.components.tittle.Location
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.utils.UiState
 import com.example.infinite_track.utils.getCurrentDate
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -37,6 +37,7 @@ fun EmployeeAndManagerComponent(
     modifier: Modifier = Modifier,
     user: UserModel?,
     attendanceState: UiState<List<AttendanceRecord>>,
+    bookingHistoryState: UiState<List<BookingHistoryItem>>,
     annualBalance: Int,
     annualUsed: Int,
     currentLocation: String,
@@ -44,13 +45,15 @@ fun EmployeeAndManagerComponent(
     navigateAttendance: () -> Unit,
     navigateTimeOffRequest: () -> Unit,
     navigateListMyAttendance: () -> Unit,
+    navigateToBookingHistory: () -> Unit,
 ) {
     val annualLeft = annualBalance - annualUsed
 
     user?.let { userData ->
         val fullImageUrl = userData.photoUrl?.ifEmpty {
             "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
-        } ?: "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
+        }
+            ?: "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
 
         Box(
             modifier = modifier.fillMaxSize()
@@ -89,10 +92,6 @@ fun EmployeeAndManagerComponent(
                         LoadingAnimation()
                     }
                 } else {
-                    // Note: TopAttendanceCard components have been removed
-
-                    // Note: SeeAllButton for list_time_off and leave history section are commented out
-
                     Spacer(modifier.height(12.dp))
 
                     // Tombol lihat semua absensi
@@ -103,7 +102,7 @@ fun EmployeeAndManagerComponent(
 
                     Spacer(modifier.height(12.dp))
 
-                    // Data Absensi - now using LazyColumn like in DetailsMyAttendance
+                    // Data Absensi
                     when (attendanceState) {
                         is UiState.Success -> {
                             if (attendanceState.data.isEmpty()) {
@@ -124,16 +123,15 @@ fun EmployeeAndManagerComponent(
                                     }
                                 }
                             } else {
-                                // Using a LazyColumn with a fixed height constraint for the top 5 records
-                                LazyColumn(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(320.dp), // Fixed height to prevent constraint issues
-                                    contentPadding = PaddingValues(bottom = 8.dp)
+                                // Using Column instead of LazyColumn for better height management
+                                val attendanceItems =
+                                    attendanceState.data.take(5) // Max 5 items for employee/manager
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    items(attendanceState.data.take(5)) { attendance ->
+                                    attendanceItems.forEach { attendance ->
                                         AttendanceHistoryC(record = attendance)
-                                        Spacer(modifier = Modifier.height(8.dp))
                                     }
                                 }
                             }
@@ -171,6 +169,87 @@ fun EmployeeAndManagerComponent(
                             // Do nothing or show a placeholder if needed
                         }
                     }
+                    Spacer(modifier.height(12.dp))
+
+                    SeeAllButton(
+                        label = "Riwayat Booking WFA",
+                        onClickButton = navigateToBookingHistory
+                    )
+
+                    Spacer(modifier.height(12.dp))
+
+                    // Data Booking History
+                    when (bookingHistoryState) {
+                        is UiState.Success -> {
+                            if (bookingHistoryState.data.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        EmptyListAnimation(modifier = Modifier.size(150.dp))
+                                        Text(
+                                            text = "No booking records found",
+                                            style = headline4,
+                                        )
+                                    }
+                                }
+                            } else {
+                                // Using Column instead of LazyColumn for better height management
+                                val bookingItems = bookingHistoryState.data.take(3) // Max 3 items
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    bookingItems.forEach { booking ->
+                                        BookingHistoryCard(booking = booking)
+                                    }
+                                }
+                            }
+                        }
+
+                        is UiState.Error -> {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    EmptyListAnimation(modifier = Modifier.size(150.dp))
+                                    Text(
+                                        text = bookingHistoryState.errorMessage,
+                                        style = headline4,
+                                    )
+                                }
+                            }
+                        }
+
+                        is UiState.Loading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                LoadingAnimation()
+                            }
+                        }
+
+                        is UiState.Idle -> {
+                            // Do nothing or show a placeholder if needed
+                        }
+                    }
+
+                    // Dynamic spacing - only add spacer if there are booking items
+                    if (bookingHistoryState is UiState.Success && bookingHistoryState.data.isNotEmpty()) {
+                        Spacer(modifier.height(12.dp))
+                    }
+
                 }
             }
         }

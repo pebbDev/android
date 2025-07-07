@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +37,6 @@ import com.example.infinite_track.presentation.theme.Blue_100
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Purple_200
 import com.example.infinite_track.presentation.theme.White
-import com.example.infinite_track.utils.formatDate
 
 @Composable
 fun TimeOffCard(
@@ -113,7 +111,7 @@ fun TimeOffCard(
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
-                ){
+                ) {
                     Text(
                         text = timeOff.name,
                         style = body1,

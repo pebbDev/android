@@ -11,6 +11,7 @@ import com.example.infinite_track.data.soucre.network.response.LogoutResponse
 import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
+import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
@@ -66,4 +67,10 @@ interface ApiService {
         @Query("lat") latitude: Double,
         @Query("lng") longitude: Double
     ): WfaRecommendationResponse
+
+    @GET("api/bookings/history")
+    suspend fun getBookingHistory(
+        @Query("limit") limit: Int,
+        @Query("page") page: Int = 1
+    ): BookingHistoryResponse
 }
