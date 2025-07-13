@@ -28,13 +28,13 @@ import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import com.google.gson.Gson
 
 @Module
 @InstallIn(SingletonComponent::class)

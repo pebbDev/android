@@ -2,7 +2,6 @@ package com.example.infinite_track.data.soucre.local.room
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.TypeConverters
 
 @Entity(tableName = "user_profile")
 data class UserEntity(
@@ -23,7 +22,6 @@ data class UserEntity(
     val radius: Int?,
     val locationDescription: String?,
     val locationCategoryName: String?,
-    @TypeConverters(Converters::class)
     val faceEmbedding: ByteArray? = null
 ) {
     override fun equals(other: Any?): Boolean {

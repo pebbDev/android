@@ -61,7 +61,8 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true // Enable BuildConfig generation
+        buildConfig = true
+        mlModelBinding = true// Enable BuildConfig generation
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
@@ -99,6 +100,7 @@ dependencies {
     // WorkManager untuk background tasks
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
+    implementation(libs.tensorflow.lite.gpu)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -124,6 +126,9 @@ dependencies {
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.camera2)
+
+    // ML Kit Face Detection
+    implementation(libs.face.detection)
 
     //coil
     implementation(libs.coil.kt.coil.compose)
@@ -172,7 +177,8 @@ dependencies {
     kapt(libs.room.compiler)
 
     //Tensorflow Lite
+    implementation(libs.tensorflow.lite.task.vision)
     implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.gpu)
-    implementation(libs.tensorflow.lite.task.vision) // Using compatible version
+    implementation(libs.tensorflow.lite.metadata)
+    implementation(libs.tensorflow.lite.support)
 }

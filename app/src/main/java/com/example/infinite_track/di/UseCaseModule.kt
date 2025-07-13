@@ -13,9 +13,11 @@ import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
+import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
 import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.contact.GetContactsUseCase
@@ -37,6 +39,24 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
 
+    // Provide the Generate and Save Embedding Use Case
+    @Provides
+    fun provideGenerateAndSaveEmbeddingUseCase(
+        faceProcessor: FaceProcessor,
+        authRepository: AuthRepository
+    ): GenerateAndSaveEmbeddingUseCase {
+        return GenerateAndSaveEmbeddingUseCase(faceProcessor, authRepository)
+    }
+
+    // Provide the Verify Face Use Case
+    @Provides
+    fun provideVerifyFaceUseCase(
+        faceProcessor: FaceProcessor,
+        authRepository: AuthRepository
+    ): VerifyFaceUseCase {
+        return VerifyFaceUseCase(faceProcessor, authRepository)
+    }
+
     // Provide the Login Use Case
     @Provides
     fun provideLoginUseCase(
@@ -46,13 +66,13 @@ object UseCaseModule {
         return LoginUseCase(authRepository, faceProcessor)
     }
 
-    // Provide the Check Session Use Case
+    // Provide the Check Session Use Case (Updated to use GenerateAndSaveEmbeddingUseCase)
     @Provides
     fun provideCheckSessionUseCase(
         authRepository: AuthRepository,
-        faceProcessor: FaceProcessor
+        generateAndSaveEmbeddingUseCase: GenerateAndSaveEmbeddingUseCase
     ): CheckSessionUseCase {
-        return CheckSessionUseCase(authRepository, faceProcessor)
+        return CheckSessionUseCase(authRepository, generateAndSaveEmbeddingUseCase)
     }
 
     // Provide the Logout Use Case

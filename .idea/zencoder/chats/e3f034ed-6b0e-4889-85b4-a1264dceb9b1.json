@@ -1,0 +1,527 @@
+{
+    "checksum": "46a732b94d2c3e692376f12503b45bada06ed26e23256c24c7b5610514d71728",
+    "data": {
+    "id": "e3f034ed-6b0e-4889-85b4-a1264dceb9b1",
+    "createdAt": 1752374732458,
+    "updatedAt": 1752374732467,
+    "title": "/explain     }      // ImageProcessor for handl...",
+    "messages": [
+        {
+            "id": "84c582e5-14cf-4e20-8c98-690260e45cac",
+            "role": "user",
+            "content": [
+                {
+                    "type": "command",
+                    "commandName": "explain"
+                },
+                {
+                    "type": "codeSnippet",
+                    "text": "    }\n\n    // ImageProcessor for handling resize and normalization operations\n    private val imageProcessor by lazy {\n        ImageProcessor.Builder()\n            .add(ResizeOp(IMAGE_SIZE, IMAGE_SIZE, ResizeOp.ResizeMethod.BILINEAR))\n            .add(NormalizeOp(127.5f, 127.5f)) // Normalize from [0,255] to [-1,1]\n            .build()\n    }\n\n    /**\n     * Generates a face embedding from a profile photo URL",
+                    "language": "kotlin"
+                },
+                {
+                    "type": "text",
+                    "text": "Not enough information to infer type argument for 'T'."
+                }
+            ],
+            "context": {
+                "currentFile": {
+                    "path": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\face\\FaceProcessor.kt",
+                    "fsPath": "E:/skrisi/android/app/src/main/java/com/example/infinite_track/data/face/FaceProcessor.kt",
+                    "content": "package com.example.infinite_track.data.face\n\nimport android.content.Context\nimport android.graphics.Bitmap\nimport android.graphics.BitmapFactory\nimport android.util.Log\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.withContext\nimport org.tensorflow.lite.Interpreter\nimport org.tensorflow.lite.support.image.ImageProcessor\nimport org.tensorflow.lite.support.image.TensorImage\nimport org.tensorflow.lite.support.image.ops.ResizeOp\nimport java.io.FileInputStream\nimport java.io.IOException\nimport java.net.HttpURLConnection\nimport java.net.URL\nimport java.nio.ByteBuffer\nimport java.nio.ByteOrder\nimport java.nio.MappedByteBuffer\nimport java.nio.channels.FileChannel\nimport javax.inject.Inject\nimport javax.inject.Singleton\n\n/**\n * Processor for generating face embeddings from profile photos\n * Encapsulates all TensorFlow Lite operations for face recognition\n */\n@Singleton\nclass FaceProcessor @Inject constructor(\n    private val appContext: Context\n) {\n    companion object {\n        private const val TAG = \"FaceProcessor\"\n        private const val MODEL_FILE = \"face_embeddings.tflite\"\n        private const val IMAGE_SIZE = 112 // Standard size for face recognition models\n        private const val EMBEDDING_SIZE = 128 // Output size of the embedding vector\n        private const val PIXEL_SIZE = 3 // RGB channels\n    }\n\n    // Lazy-loaded TensorFlow Lite Interpreter\n    private val interpreter by lazy {\n        try {\n            Interpreter(loadModelFile())\n        } catch (e: Exception) {\n            Log.e(TAG, \"Error initializing TFLite interpreter\", e)\n            null\n        }\n    }\n\n    // ImageProcessor for handling resize and normalization operations\n    private val imageProcessor by lazy {\n        ImageProcessor.Builder()\n            .add(ResizeOp(IMAGE_SIZE, IMAGE_SIZE, ResizeOp.ResizeMethod.BILINEAR))\n            .add(NormalizeOp(127.5f, 127.5f)) // Normalize from [0,255] to [-1,1]\n            .build()\n    }\n\n    /**\n     * Generates a face embedding from a profile photo URL\n     * @param photoUrl URL of the user's profile photo\n     * @return Result containing ByteArray embedding or error\n     */\n    suspend fun generateEmbedding(photoUrl: String): Result<ByteArray> =\n        withContext(Dispatchers.IO) {\n            try {\n                if (photoUrl.isBlank()) {\n                    return@withContext Result.failure(Exception(\"Photo URL is empty\"))\n                }\n\n                val tflite = interpreter ?: return@withContext Result.failure(\n                    Exception(\"TensorFlow Lite interpreter not initialized\")\n                )\n\n                // 1. Download image from URL\n                val bitmap = downloadImage(photoUrl) ?: return@withContext Result.failure(\n                    Exception(\"Failed to download or process image\")\n                )\n\n                // 2. Process image using ImageProcessor (resize and normalize)\n                val tensorImage = TensorImage.fromBitmap(bitmap)\n                val processedImage = imageProcessor.process(tensorImage)\n\n                // 3. Run inference to get face embedding\n                val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }\n                tflite.run(processedImage.buffer, outputBuffer)\n\n                // 4. Convert FloatArray to ByteArray\n                val embedding = convertFloatsToBytes(outputBuffer[0])\n\n                // 5. Return success result with embedding\n                Result.success(embedding)\n            } catch (e: Exception) {\n                Log.e(TAG, \"Error generating face embedding\", e)\n                Result.failure(e)\n            }\n        }\n\n    /**\n     * Loads the TensorFlow Lite model file from assets\n     */\n    private fun loadModelFile(): MappedByteBuffer {\n        val fileDescriptor = appContext.assets.openFd(MODEL_FILE)\n        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)\n        val fileChannel = inputStream.channel\n        val startOffset = fileDescriptor.startOffset\n        val declaredLength = fileDescriptor.declaredLength\n        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)\n    }\n\n    /**\n     * Downloads and decodes an image from a URL\n     */\n    private suspend fun downloadImage(imageUrl: String): Bitmap? = withContext(Dispatchers.IO) {\n        try {\n            val url = URL(imageUrl)\n            val connection = url.openConnection() as HttpURLConnection\n            connection.doInput = true\n            connection.connect()\n\n            val inputStream = connection.inputStream\n            val bitmap = BitmapFactory.decodeStream(inputStream)\n            inputStream.close()\n            connection.disconnect()\n\n            bitmap\n        } catch (e: IOException) {\n            Log.e(TAG, \"Error downloading image\", e)\n            null\n        }\n    }\n\n\n    /**\n     * Converts a FloatArray embedding to a ByteArray for storage\n     */\n    private fun convertFloatsToBytes(floats: FloatArray): ByteArray {\n        val buffer = ByteBuffer.allocate(floats.size * 4)\n        buffer.order(ByteOrder.LITTLE_ENDIAN)\n\n        for (f in floats) {\n            buffer.putFloat(f)\n        }\n\n        return buffer.array()\n    }\n}",
+                    "language": "kotlin"
+                },
+                "codebaseEnabled": true,
+                "ragFiles": [
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/face/FaceProcessor.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\face\\FaceProcessor.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/repository/auth/AuthRepositoryImpl.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\auth\\AuthRepositoryImpl.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/domain/use_case/auth/CheckSessionUseCase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\CheckSessionUseCase.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/domain/use_case/auth/LoginUseCase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\LoginUseCase.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/domain/repository/AuthRepository.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\repository\\AuthRepository.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/build/generated/source/kapt/debug/com/example/infinite_track/domain/use_case/face/GenerateAndSaveEmbeddingUseCase_Factory.java",
+                        "fsPath": "E:\\skrisi\\android\\app\\build\\generated\\source\\kapt\\debug\\com\\example\\infinite_track\\domain\\use_case\\face\\GenerateAndSaveEmbeddingUseCase_Factory.java",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/di/UseCaseModule.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\di\\UseCaseModule.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/di/AppModule.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\di\\AppModule.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceScannerScreen.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\attendance\\face\\FaceScannerScreen.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/presentation/components/face/FaceBoundingBox.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\face\\FaceBoundingBox.kt",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/build/generated/source/kapt/debug/com/example/infinite_track/di/UseCaseModule_ProvideLoginUseCaseFactory.java",
+                        "fsPath": "E:\\skrisi\\android\\app\\build\\generated\\source\\kapt\\debug\\com\\example\\infinite_track\\di\\UseCaseModule_ProvideLoginUseCaseFactory.java",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/build/generated/source/kapt/debug/com/example/infinite_track/di/UseCaseModule_ProvideCheckSessionUseCaseFactory.java",
+                        "fsPath": "E:\\skrisi\\android\\app\\build\\generated\\source\\kapt\\debug\\com\\example\\infinite_track\\di\\UseCaseModule_ProvideCheckSessionUseCaseFactory.java",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/build/generated/source/kapt/debug/com/example/infinite_track/di/AppModule_ProvideFaceProcessorFactory.java",
+                        "fsPath": "E:\\skrisi\\android\\app\\build\\generated\\source\\kapt\\debug\\com\\example\\infinite_track\\di\\AppModule_ProvideFaceProcessorFactory.java",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/build/generated/source/kapt/debug/com/example/infinite_track/data/face/FaceProcessor_Factory.java",
+                        "fsPath": "E:\\skrisi\\android\\app\\build\\generated\\source\\kapt\\debug\\com\\example\\infinite_track\\data\\face\\FaceProcessor_Factory.java",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/build/generated/source/kapt/debug/com/example/infinite_track/domain/use_case/auth/CheckSessionUseCase_Factory.java",
+                        "fsPath": "E:\\skrisi\\android\\app\\build\\generated\\source\\kapt\\debug\\com\\example\\infinite_track\\domain\\use_case\\auth\\CheckSessionUseCase_Factory.java",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app/build/generated/source/kapt/debug/com/example/infinite_track/domain/use_case/auth/LoginUseCase_Factory.java",
+                        "fsPath": "E:\\skrisi\\android\\app\\build\\generated\\source\\kapt\\debug\\com\\example\\infinite_track\\domain\\use_case\\auth\\LoginUseCase_Factory.java",
+                        "sources": [
+                            "keyword_search"
+                        ]
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\data\\face\\FaceProcessor.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\face\\FaceProcessor.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\face\\GenerateAndSaveEmbeddingUseCase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\face\\GenerateAndSaveEmbeddingUseCase.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\recognition\\FaceRecognition.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\recognition\\FaceRecognition.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\build.gradle.kts",
+                        "fsPath": "E:\\skrisi\\android\\app\\build.gradle.kts",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\local\\room\\UserEntity.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\local\\room\\UserEntity.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\LoginUseCase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\LoginUseCase.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\leave_request\\leave\\LeaveRequest.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\leave_request\\leave\\LeaveRequest.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\CameraFix.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\CameraFix.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\attendance\\face\\FaceScannerScreen.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\attendance\\face\\FaceScannerScreen.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\CheckSessionUseCase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\CheckSessionUseCase.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\CameraCapture.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\CameraCapture.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\face\\FaceBoundingBox.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\face\\FaceBoundingBox.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\auth\\AuthRepositoryImpl.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\auth\\AuthRepositoryImpl.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\utils\\UiState.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\utils\\UiState.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cards\\CardAbsence.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cards\\CardAbsence.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cards\\MenuCard.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cards\\MenuCard.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\NetworkResponse.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\NetworkResponse.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\res\\raw\\profile_sync.json",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\res\\raw\\profile_sync.json",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\res\\raw\\error.json",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\res\\raw\\error.json",
+                        "sources": []
+                    },
+                    {
+                        "path": "README.md",
+                        "fsPath": "E:\\skrisi\\android\\README.md",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\.gitignore",
+                        "fsPath": "E:\\skrisi\\android\\app\\.gitignore",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\res\\raw\\comingsoon_animation.json",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\res\\raw\\comingsoon_animation.json",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\res\\drawable\\ic_community.xml",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\res\\drawable\\ic_community.xml",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\res\\drawable\\ic_attendance_late.xml",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\res\\drawable\\ic_attendance_late.xml",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\CameraTest.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\components\\cameras\\CameraTest.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "app\\src\\main\\java\\com\\example\\infinite_track\\utils\\BitmapUtils.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\utils\\BitmapUtils.kt",
+                        "sources": []
+                    },
+                    {
+                        "path": "README.md",
+                        "fsPath": "E:\\skrisi\\android\\README.md",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/face/FaceProcessor.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\face\\FaceProcessor.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/mapper/attendance/AttendanceMapper.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\mapper\\attendance\\AttendanceMapper.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/mapper/attendance/AttendanceHistoryMapper.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\mapper\\attendance\\AttendanceHistoryMapper.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/repository/attendance/AttendanceHistoryRepositoryImpl.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\attendance\\AttendanceHistoryRepositoryImpl.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/repository/attendance/AttendanceRepositoryImpl.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\attendance\\AttendanceRepositoryImpl.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/soucre/local/room/UserDao.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\local\\room\\UserDao.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/repository/auth/AuthRepositoryImpl.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\auth\\AuthRepositoryImpl.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/repository/booking/BookingRepositoryImpl.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\booking\\BookingRepositoryImpl.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/repository/WfaRepositoryImpl.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\repository\\WfaRepositoryImpl.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/domain/use_case/auth/CheckSessionUseCase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\CheckSessionUseCase.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/presentation/main/MainActivity.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\main\\MainActivity.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/di/UseCaseModule.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\di\\UseCaseModule.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/presentation/screen/splash/SplashScreen.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\presentation\\screen\\splash\\SplashScreen.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/domain/use_case/auth/LogoutUseCase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\use_case\\auth\\LogoutUseCase.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/mapper/auth/UserMapper.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\mapper\\auth\\UserMapper.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/soucre/network/response/LoginResponse.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\network\\response\\LoginResponse.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/domain/model/auth/UserModel.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\domain\\model\\auth\\UserModel.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/soucre/local/room/UserEntity.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\local\\room\\UserEntity.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/soucre/local/room/AppDatabase.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\local\\room\\AppDatabase.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "local.properties",
+                        "fsPath": "E:\\skrisi\\android\\local.properties",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/build.gradle.kts",
+                        "fsPath": "E:\\skrisi\\android\\app\\build.gradle.kts",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "gradle/libs.versions.toml",
+                        "fsPath": "E:\\skrisi\\android\\gradle\\libs.versions.toml",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/proguard-rules.pro",
+                        "fsPath": "E:\\skrisi\\android\\app\\proguard-rules.pro",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "build.gradle.kts",
+                        "fsPath": "E:\\skrisi\\android\\build.gradle.kts",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    },
+                    {
+                        "path": "app/src/main/java/com/example/infinite_track/data/soucre/network/retrofit/ApiService.kt",
+                        "fsPath": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\soucre\\network\\retrofit\\ApiService.kt",
+                        "sources": [
+                            "opened_tab"
+                        ]
+                    }
+                ],
+                "usedFilePaths": [
+                    {
+                        "path": "E:\\skrisi\\android\\app\\src\\main\\java\\com\\example\\infinite_track\\data\\face\\FaceProcessor.kt",
+                        "fsPath": "E:/skrisi/android/app/src/main/java/com/example/infinite_track/data/face/FaceProcessor.kt",
+                        "content": "package com.example.infinite_track.data.face\n\nimport android.content.Context\nimport android.graphics.Bitmap\nimport android.graphics.BitmapFactory\nimport android.util.Log\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.withContext\nimport org.tensorflow.lite.Interpreter\nimport org.tensorflow.lite.support.image.ImageProcessor\nimport org.tensorflow.lite.support.image.TensorImage\nimport org.tensorflow.lite.support.image.ops.ResizeOp\nimport java.io.FileInputStream\nimport java.io.IOException\nimport java.net.HttpURLConnection\nimport java.net.URL\nimport java.nio.ByteBuffer\nimport java.nio.ByteOrder\nimport java.nio.MappedByteBuffer\nimport java.nio.channels.FileChannel\nimport javax.inject.Inject\nimport javax.inject.Singleton\n\n/**\n * Processor for generating face embeddings from profile photos\n * Encapsulates all TensorFlow Lite operations for face recognition\n */\n@Singleton\nclass FaceProcessor @Inject constructor(\n    private val appContext: Context\n) {\n    companion object {\n        private const val TAG = \"FaceProcessor\"\n        private const val MODEL_FILE = \"face_embeddings.tflite\"\n        private const val IMAGE_SIZE = 112 // Standard size for face recognition models\n        private const val EMBEDDING_SIZE = 128 // Output size of the embedding vector\n        private const val PIXEL_SIZE = 3 // RGB channels\n    }\n\n    // Lazy-loaded TensorFlow Lite Interpreter\n    private val interpreter by lazy {\n        try {\n            Interpreter(loadModelFile())\n        } catch (e: Exception) {\n            Log.e(TAG, \"Error initializing TFLite interpreter\", e)\n            null\n        }\n    }\n\n    // ImageProcessor for handling resize and normalization operations\n    private val imageProcessor by lazy {\n        ImageProcessor.Builder()\n            .add(ResizeOp(IMAGE_SIZE, IMAGE_SIZE, ResizeOp.ResizeMethod.BILINEAR))\n            .add(NormalizeOp(127.5f, 127.5f)) // Normalize from [0,255] to [-1,1]\n            .build()\n    }\n\n    /**\n     * Generates a face embedding from a profile photo URL\n     * @param photoUrl URL of the user's profile photo\n     * @return Result containing ByteArray embedding or error\n     */\n    suspend fun generateEmbedding(photoUrl: String): Result<ByteArray> =\n        withContext(Dispatchers.IO) {\n            try {\n                if (photoUrl.isBlank()) {\n                    return@withContext Result.failure(Exception(\"Photo URL is empty\"))\n                }\n\n                val tflite = interpreter ?: return@withContext Result.failure(\n                    Exception(\"TensorFlow Lite interpreter not initialized\")\n                )\n\n                // 1. Download image from URL\n                val bitmap = downloadImage(photoUrl) ?: return@withContext Result.failure(\n                    Exception(\"Failed to download or process image\")\n                )\n\n                // 2. Process image using ImageProcessor (resize and normalize)\n                val tensorImage = TensorImage.fromBitmap(bitmap)\n                val processedImage = imageProcessor.process(tensorImage)\n\n                // 3. Run inference to get face embedding\n                val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }\n                tflite.run(processedImage.buffer, outputBuffer)\n\n                // 4. Convert FloatArray to ByteArray\n                val embedding = convertFloatsToBytes(outputBuffer[0])\n\n                // 5. Return success result with embedding\n                Result.success(embedding)\n            } catch (e: Exception) {\n                Log.e(TAG, \"Error generating face embedding\", e)\n                Result.failure(e)\n            }\n        }\n\n    /**\n     * Loads the TensorFlow Lite model file from assets\n     */\n    private fun loadModelFile(): MappedByteBuffer {\n        val fileDescriptor = appContext.assets.openFd(MODEL_FILE)\n        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)\n        val fileChannel = inputStream.channel\n        val startOffset = fileDescriptor.startOffset\n        val declaredLength = fileDescriptor.declaredLength\n        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)\n    }\n\n    /**\n     * Downloads and decodes an image from a URL\n     */\n    private suspend fun downloadImage(imageUrl: String): Bitmap? = withContext(Dispatchers.IO) {\n        try {\n            val url = URL(imageUrl)\n            val connection = url.openConnection() as HttpURLConnection\n            connection.doInput = true\n            connection.connect()\n\n            val inputStream = connection.inputStream\n            val bitmap = BitmapFactory.decodeStream(inputStream)\n            inputStream.close()\n            connection.disconnect()\n\n            bitmap\n        } catch (e: IOException) {\n            Log.e(TAG, \"Error downloading image\", e)\n            null\n        }\n    }\n\n\n    /**\n     * Converts a FloatArray embedding to a ByteArray for storage\n     */\n    private fun convertFloatsToBytes(floats: FloatArray): ByteArray {\n        val buffer = ByteBuffer.allocate(floats.size * 4)\n        buffer.order(ByteOrder.LITTLE_ENDIAN)\n\n        for (f in floats) {\n            buffer.putFloat(f)\n        }\n\n        return buffer.array()\n    }\n}",
+                        "language": "kotlin"
+                    }
+                ]
+            },
+            "createdAt": 1752374732466,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "command",
+                                "attrs": {
+                                    "label": "explain"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "/explain"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "codeBlock",
+                                "attrs": {
+                                    "language": "kotlin"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "    }\n\n    // ImageProcessor for handling resize and normalization operations\n    private val imageProcessor by lazy {\n        ImageProcessor.Builder()\n            .add(ResizeOp(IMAGE_SIZE, IMAGE_SIZE, ResizeOp.ResizeMethod.BILINEAR))\n            .add(NormalizeOp(127.5f, 127.5f)) // Normalize from [0,255] to [-1,1]\n            .build()\n    }\n\n    /**\n     * Generates a face embedding from a profile photo URL"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": "Not enough information to infer type argument for 'T'."
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "577ba4a8-4a2a-4353-a467-b6a6b7b95d34",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": ""
+                }
+            ],
+            "createdAt": 1752374736420,
+            "isInternal": false
+        }
+    ],
+    "isAgent": false,
+    "isCustomAgent": false
+}
+}

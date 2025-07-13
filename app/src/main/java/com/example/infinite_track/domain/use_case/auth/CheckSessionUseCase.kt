@@ -1,6 +1,5 @@
 package com.example.infinite_track.domain.use_case.auth
 
-import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.first
@@ -11,19 +10,23 @@ import javax.inject.Inject
  */
 class CheckSessionUseCase @Inject constructor(
     private val authRepository: AuthRepository,
-    private val faceProcessor: FaceProcessor
+    private val generateAndSaveEmbeddingUseCase: GenerateAndSaveEmbeddingUseCase
 ) {
     /**
      * Invokes the session check process
      * Orchestrates the flow of data between repository and face processor
-     * @return Result<User> with the user data if session exists
+     * @return Result<UserModel> with the user data if session exists, or failure if embedding generation fails
      */
     suspend operator fun invoke(): Result<UserModel> {
-        // First, sync user profile from the server
-        val syncResult = authRepository.syncUserProfile()
+        try {
+            // First, sync user profile from the server
+            val syncResult = authRepository.syncUserProfile()
 
-        // If sync was successful, check if we need to update face embedding
-        if (syncResult.isSuccess) {
+            // If sync failed, return the failure immediately
+            if (syncResult.isFailure) {
+                return syncResult
+            }
+
             val newUserData = syncResult.getOrNull()!!
 
             // Get current user data from local storage to compare photoUpdatedAt
@@ -35,19 +38,26 @@ class CheckSessionUseCase @Inject constructor(
                         currentUser.faceEmbedding == null)
             ) {
 
-                // Process face image to get embedding
-                val embeddingResult = newUserData.photoUrl?.let { photoUrl ->
-                    faceProcessor.generateEmbedding(photoUrl)
-                } ?: Result.failure(NullPointerException("Photo URL is null"))
+                // Use GenerateAndSaveEmbeddingUseCase to handle face embedding generation
+                val embeddingResult = generateAndSaveEmbeddingUseCase(
+                    userId = newUserData.id,
+                    photoUrl = newUserData.photoUrl
+                )
 
-                // If embedding generation was successful, save it
-                if (embeddingResult.isSuccess) {
-                    val embedding = embeddingResult.getOrNull()!!
-                    authRepository.saveFaceEmbedding(newUserData.id, embedding)
+                // If embedding generation failed, stop the process and return failure
+                if (embeddingResult.isFailure) {
+                    return Result.failure(
+                        embeddingResult.exceptionOrNull()
+                            ?: Exception("Face embedding generation failed")
+                    )
                 }
             }
-        }
 
-        return syncResult
+            // If everything succeeded, return the sync result
+            return syncResult
+
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
     }
 }

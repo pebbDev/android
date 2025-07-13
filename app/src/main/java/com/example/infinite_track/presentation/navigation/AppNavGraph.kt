@@ -9,6 +9,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import com.example.infinite_track.presentation.main.MainScreen
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
+import com.example.infinite_track.presentation.screen.attendance.face.FaceScannerScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.auth.LoginScreen
 import com.example.infinite_track.presentation.screen.booking.WfaBookingScreen
@@ -79,6 +80,24 @@ fun NavGraphBuilder.appNavGraph(
         val viewModel: WfaBookingViewModel = hiltViewModel()
         WfaBookingScreen(
             viewModel = viewModel,
+            navController = navController
+        )
+    }
+
+    // Face Scanner Screen
+    composable(
+        route = Screen.FaceScanner.route,
+        arguments = listOf(
+            navArgument("currentTime") { type = NavType.StringType },
+            navArgument("currentAddress") { type = NavType.StringType }
+        )
+    ) { backStackEntry ->
+        val currentTime = backStackEntry.arguments?.getString("currentTime") ?: ""
+        val currentAddress = backStackEntry.arguments?.getString("currentAddress") ?: ""
+
+        FaceScannerScreen(
+            currentTime = currentTime,
+            currentAddress = currentAddress,
             navController = navController
         )
     }

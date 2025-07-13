@@ -2,6 +2,7 @@
 accompanistPermissions = "0.28.0"
 agp = "8.5.2"
 dotlottieAndroid = "0.5.0"
+faceDetection = "16.1.6"
 hiltWork = "1.0.0"
 mapboxMapsSdk = "11.12.4" # Renamed from 'android'
 mapboxMapsComposeExtension = "11.12.4" # Added Mapbox Compose Extension version
@@ -37,9 +38,11 @@ playServicesMaps = "18.1.0"
 retrofit = "2.11.0"
 datastorePreferencesCoreJvm = "1.1.1"
 tensorflowLite = "2.13.0"
+tensorflowLiteMetadataVersion = "0.4.4"
 tensorflowLiteGpu = "2.13.0"
 tensorflowLiteTaskVision = "0.4.4"
 ui = "1.7.4"
+tensorflowLiteSupport = "0.4.4"
 foundationAndroid = "1.7.2"
 uiToolingPreview = "1.5.0"
 uiVersion = "1.5.0"
@@ -52,10 +55,12 @@ roomRuntime = "2.6.1"
 workRuntimeKtx = "2.9.0"
 
 [libraries]
+face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
+tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupport" }
+tensorflow-lite-metadata = { module = "org.tensorflow:tensorflow-lite-metadata", version.ref = "tensorflowLiteMetadataVersion" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltWork" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
-dotlottie-android = { module = "com.github.LottieFiles:dotlottie-android", version.ref = "dotlottieAndroid" }
 mapboxMapsSdk = { module = "com.mapbox.maps:android", version.ref = "mapboxMapsSdk" } # Renamed from 'android'
 mapboxMapsComposeExtension = { module = "com.mapbox.extension:maps-compose", version.ref = "mapboxMapsComposeExtension" } # Corrected module name
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
@@ -86,7 +91,6 @@ androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", versi
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }

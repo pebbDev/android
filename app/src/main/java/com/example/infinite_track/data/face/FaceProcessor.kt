@@ -4,11 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import androidx.core.graphics.get
-import androidx.core.graphics.scale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.support.common.ops.NormalizeOp
+import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.support.image.TensorImage
+import org.tensorflow.lite.support.image.ops.ResizeOp
 import java.io.FileInputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -32,8 +34,7 @@ class FaceProcessor @Inject constructor(
         private const val TAG = "FaceProcessor"
         private const val MODEL_FILE = "face_embeddings.tflite"
         private const val IMAGE_SIZE = 112 // Standard size for face recognition models
-        private const val EMBEDDING_SIZE = 512 // Output size of the embedding vector
-        private const val PIXEL_SIZE = 3 // RGB channels
+        private const val EMBEDDING_SIZE = 128 // Output size of the embedding vector
     }
 
     // Lazy-loaded TensorFlow Lite Interpreter
@@ -44,6 +45,14 @@ class FaceProcessor @Inject constructor(
             Log.e(TAG, "Error initializing TFLite interpreter", e)
             null
         }
+    }
+
+    // ImageProcessor for handling resize and normalization operations
+    private val imageProcessor by lazy {
+        ImageProcessor.Builder()
+            .add(ResizeOp(IMAGE_SIZE, IMAGE_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(127.5f, 127.5f)) // Normalize from [0,255] to [-1,1]
+            .build()
     }
 
     /**
@@ -67,20 +76,18 @@ class FaceProcessor @Inject constructor(
                     Exception("Failed to download or process image")
                 )
 
-                // 2. Resize and preprocess the image
-                val processedBitmap = preprocessImage(bitmap)
+                // 2. Process image using ImageProcessor (resize and normalize)
+                val tensorImage = TensorImage.fromBitmap(bitmap)
+                val processedImage = imageProcessor.process(tensorImage)
 
-                // 3. Convert bitmap to input tensor
-                val inputBuffer = convertBitmapToByteBuffer(processedBitmap)
-
-                // 4. Run inference to get face embedding
+                // 3. Run inference to get face embedding
                 val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
-                tflite.run(inputBuffer, outputBuffer)
+                tflite.run(processedImage.buffer, outputBuffer)
 
-                // 5. Convert FloatArray to ByteArray
+                // 4. Convert FloatArray to ByteArray
                 val embedding = convertFloatsToBytes(outputBuffer[0])
 
-                // 6. Return success result with embedding
+                // 5. Return success result with embedding
                 Result.success(embedding)
             } catch (e: Exception) {
                 Log.e(TAG, "Error generating face embedding", e)
@@ -122,42 +129,6 @@ class FaceProcessor @Inject constructor(
         }
     }
 
-    /**
-     * Preprocesses the bitmap by resizing it to required dimensions
-     */
-    private fun preprocessImage(originalBitmap: Bitmap): Bitmap {
-        return originalBitmap.scale(IMAGE_SIZE, IMAGE_SIZE)
-    }
-
-    /**
-     * Converts a bitmap to a normalized byte buffer for model input
-     */
-    private fun convertBitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
-        val inputBuffer = ByteBuffer.allocateDirect(
-            1 * IMAGE_SIZE * IMAGE_SIZE * PIXEL_SIZE * 4
-        ).apply {
-            order(ByteOrder.nativeOrder())
-        }
-
-        // Normalize pixel values to [0, 1]
-        for (y in 0 until IMAGE_SIZE) {
-            for (x in 0 until IMAGE_SIZE) {
-                val pixel = bitmap[x, y]
-
-                // Extract RGB values
-                val r = (pixel shr 16 and 0xFF) / 255.0f
-                val g = (pixel shr 8 and 0xFF) / 255.0f
-                val b = (pixel and 0xFF) / 255.0f
-
-                // Add normalized RGB values to buffer
-                inputBuffer.putFloat(r)
-                inputBuffer.putFloat(g)
-                inputBuffer.putFloat(b)
-            }
-        }
-
-        return inputBuffer
-    }
 
     /**
      * Converts a FloatArray embedding to a ByteArray for storage
