@@ -11,6 +11,8 @@ import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
+import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
+import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
@@ -29,6 +31,7 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinates
 import com.example.infinite_track.domain.use_case.location.SearchLocationUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
+import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
 import dagger.Provides
@@ -167,5 +170,25 @@ object UseCaseModule {
         bookingRepository: BookingRepository
     ): SubmitWfaBookingUseCase {
         return SubmitWfaBookingUseCase(bookingRepository)
+    }
+
+    // Provide the Check In Use Case
+    @Provides
+    fun provideCheckInUseCase(
+        attendanceRepository: AttendanceRepository,
+        getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
+        geofenceManager: GeofenceManager
+    ): CheckInUseCase {
+        return CheckInUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager)
+    }
+
+    // Provide the Check Out Use Case
+    @Provides
+    fun provideCheckOutUseCase(
+        attendanceRepository: AttendanceRepository,
+        getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
+        geofenceManager: GeofenceManager
+    ): CheckOutUseCase {
+        return CheckOutUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager)
     }
 }

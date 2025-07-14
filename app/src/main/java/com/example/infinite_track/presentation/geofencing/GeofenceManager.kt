@@ -28,8 +28,28 @@ class GeofenceManager @Inject constructor(@ApplicationContext private val contex
         )
     }
 
+    /**
+     * Remove all geofences registered by this application
+     * This ensures we never hit the system limit of ~100 geofences
+     */
+    fun removeAllGeofences() {
+        geofencingClient.removeGeofences(geofencePendingIntent).run {
+            addOnSuccessListener {
+                Log.d(TAG, "Semua geofence berhasil dihapus")
+            }
+            addOnFailureListener { exception ->
+                Log.e(TAG, "Gagal menghapus semua geofence", exception)
+            }
+        }
+    }
+
     @SuppressLint("MissingPermission")
     fun addGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
+        // STEP 1: Always remove all existing geofences first (clean slate approach)
+        Log.d(TAG, "Membersihkan semua geofence sebelum menambah yang baru...")
+        removeAllGeofences()
+
+        // STEP 2: Create and add the new geofence
         val geofence = Geofence.Builder()
             .setRequestId(id)
             .setCircularRegion(latitude, longitude, radius)
@@ -43,8 +63,15 @@ class GeofenceManager @Inject constructor(@ApplicationContext private val contex
             .build()
 
         geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
-            addOnSuccessListener { Log.d(TAG, "Geofence berhasil ditambahkan: $id") }
-            addOnFailureListener { Log.e(TAG, "Gagal menambahkan geofence: $id", it) }
+            addOnSuccessListener {
+                Log.d(
+                    TAG,
+                    "Geofence berhasil ditambahkan: $id (lat: $latitude, lng: $longitude, radius: ${radius}m)"
+                )
+            }
+            addOnFailureListener { exception ->
+                Log.e(TAG, "Gagal menambahkan geofence: $id", exception)
+            }
         }
     }
 

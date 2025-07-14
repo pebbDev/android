@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults.cardColors
+import androidx.compose.material3.CardDefaults.outlinedCardBorder
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -36,8 +38,8 @@ fun FileMyLeaveCard(
     val context = LocalContext.current
 
     Card(
-        border = androidx.compose.material3.CardDefaults.outlinedCardBorder(),
-        colors = androidx.compose.material3.CardDefaults.cardColors(Color(0x33FFFFFF)),
+        border = outlinedCardBorder(),
+        colors = cardColors(Color(0x33FFFFFF)),
         modifier = Modifier
             .width(433.dp)
             .wrapContentHeight()
@@ -47,7 +49,7 @@ fun FileMyLeaveCard(
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
-        ){
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

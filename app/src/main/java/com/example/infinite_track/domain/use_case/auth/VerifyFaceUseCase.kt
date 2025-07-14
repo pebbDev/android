@@ -32,8 +32,7 @@ class VerifyFaceUseCase @Inject constructor(
             val storedEmbedding = currentUser.faceEmbedding
                 ?: return Result.failure(Exception("No stored face embedding found. Please update your profile."))
 
-            // Convert captured face to embedding using FaceProcessor
-            // First, we need to save the bitmap temporarily and get a URL or process it directly
+            // Generate embedding from captured bitmap
             val embeddingResult = generateEmbeddingFromBitmap(capturedFaceBitmap)
 
             if (embeddingResult.isFailure) {
@@ -59,20 +58,33 @@ class VerifyFaceUseCase @Inject constructor(
     }
 
     /**
-     * Generate embedding from bitmap (simplified version)
-     * In a real implementation, you might need to save bitmap temporarily or modify FaceProcessor
+     * Generate embedding from bitmap using FaceProcessor
+     * Enhanced to work directly with Bitmap without URL
      */
     private suspend fun generateEmbeddingFromBitmap(bitmap: Bitmap): Result<ByteArray> {
         return try {
-            // For now, this is a placeholder
-            // In production, you would need to modify FaceProcessor to accept Bitmap directly
-            // or save the bitmap temporarily and use the existing generateEmbedding method
-
-            // Placeholder implementation - you would replace this with actual bitmap processing
-            Result.failure(Exception("Bitmap processing not implemented yet - needs FaceProcessor modification"))
-
+            // Use the new direct bitmap processing method from FaceProcessor
+            faceProcessor.generateEmbeddingFromBitmap(bitmap)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Create temporary file from bitmap for processing
+     * This method is now deprecated in favor of direct bitmap processing
+     */
+    @Deprecated("Use generateEmbeddingFromBitmap directly")
+    private fun createTempImageFile(bitmap: Bitmap): java.io.File? {
+        return try {
+            val tempFile = java.io.File.createTempFile("face_capture", ".jpg")
+            val outputStream = java.io.FileOutputStream(tempFile)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+            outputStream.flush()
+            outputStream.close()
+            tempFile
+        } catch (e: Exception) {
+            null
         }
     }
 

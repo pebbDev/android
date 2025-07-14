@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
  * Utility object for permission-related UI components
  */
 object PermissionUtils {
-
     @Composable
     fun PermissionRationale(
         text: String,

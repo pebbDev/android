@@ -2,21 +2,21 @@ package com.example.infinite_track.di
 
 import android.content.Context
 import android.util.Log
-import com.example.infinite_track.data.repository.WfaRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceHistoryRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceRepositoryImpl
 import com.example.infinite_track.data.repository.auth.AuthRepositoryImpl
 import com.example.infinite_track.data.repository.booking.BookingRepositoryImpl
 import com.example.infinite_track.data.repository.contact.ContactRepositoryImpl
+import com.example.infinite_track.data.repository.localization.LocalizationRepositoryImpl
 import com.example.infinite_track.data.repository.location.LocationRepositoryImpl
 import com.example.infinite_track.data.repository.profile.ProfileRepositoryImpl
+import com.example.infinite_track.data.repository.wfa.WfaRepositoryImpl
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.preferences.LocalizationPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
-import com.example.infinite_track.data.soucre.repository.language.LocalizationRepositoryImpl
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
@@ -26,7 +26,6 @@ import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
-import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.gson.Gson
 import dagger.Module
@@ -54,12 +53,11 @@ object RepositoryModule {
     @Singleton
     fun provideAttendanceRepository(
         apiService: ApiService,
-        attendancePreference: AttendancePreference,
-        geofenceManager: GeofenceManager
+        attendancePreference: AttendancePreference
     ): AttendanceRepository {
         try {
             return AttendanceRepositoryImpl(
-                apiService, attendancePreference, geofenceManager
+                apiService, attendancePreference
             )
         } catch (e: Exception) {
             Log.e("RepositoryModule", "Error providing AttendanceRepository: ${e.message}", e)
@@ -71,14 +69,6 @@ object RepositoryModule {
     @Singleton
     fun provideContactRepository(): ContactRepository {
         return ContactRepositoryImpl()
-    }
-
-    @Provides
-    @Singleton
-    fun provideLocalizationRepository(
-        localizationPreference: LocalizationPreference
-    ): LocalizationRepository {
-        return LocalizationRepositoryImpl(localizationPreference)
     }
 
     @Provides
@@ -127,5 +117,13 @@ object RepositoryModule {
         gson: Gson
     ): BookingRepository {
         return BookingRepositoryImpl(apiService, gson)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocalizationRepository(
+        localizationPreference: LocalizationPreference
+    ): LocalizationRepository {
+        return LocalizationRepositoryImpl(localizationPreference)
     }
 }

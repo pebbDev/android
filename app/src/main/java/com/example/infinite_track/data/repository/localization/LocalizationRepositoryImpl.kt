@@ -1,20 +1,19 @@
-package com.example.infinite_track.data.soucre.repository.language
+package com.example.infinite_track.data.repository.localization
 
 import com.example.infinite_track.data.soucre.local.preferences.LocalizationPreference
 import com.example.infinite_track.domain.repository.LocalizationRepository
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-@Singleton
 class LocalizationRepositoryImpl @Inject constructor(
-    private val preferenceManager: LocalizationPreference
+    private val localizationPreference: LocalizationPreference
 ) : LocalizationRepository {
+
     override fun getSelectedLanguage(): Flow<String> {
-        return preferenceManager.getLanguage()
+        return localizationPreference.getLanguage()
     }
 
     override suspend fun setSelectedLanguage(language: String) {
-        preferenceManager.saveLanguage(language)
+        localizationPreference.saveLanguage(language)
     }
 }

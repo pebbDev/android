@@ -32,6 +32,16 @@
     <string name="leave_date_range">Tanggal mulai cuti: %1$s - Tanggal akhir cuti: %2$s</string>
     <string name="work_from_office">Kerja dari Kantor</string>
     <string name="work_from_home">Kerja dari Rumah</string>
+    <string name="work_from_anywhere">Kerja dari Mana Saja</string>
+    <string name="work_mode_selector_title">Pilih Mode Kerja</string>
+    <string name="wfa_booking_title">Booking WFA</string>
+    <string name="personal_information">Informasi Pribadi</string>
+    <string name="location_information">Informasi Lokasi</string>
+    <string name="radius_meters">Radius (meter)</string>
+    <string name="radius_placeholder">Masukkan radius dalam meter</string>
+    <string name="location_description">Deskripsi Lokasi</string>
+    <string name="location_description_placeholder">Masukkan deskripsi lokasi...</string>
+    <string name="book_location">Booking Lokasi</string>
     <string name="send">Kirim</string>
     <string name="write_notes">Tulis Catatan</string>
     <string name="upload_image">Unggah Gambar</string>

@@ -1,6 +1,6 @@
-package com.example.infinite_track.data.repository
+package com.example.infinite_track.data.repository.wfa
 
-import com.example.infinite_track.data.mapper.toDomain
+import com.example.infinite_track.data.mapper.wfa.toDomain
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.repository.WfaRepository

@@ -6,7 +6,7 @@ package com.example.infinite_track.domain.model.attendance
  */
 data class TodayStatus(
     val canCheckIn: Boolean,
-    val canCheckOut: Boolean?,
+    val canCheckOut: Boolean, // Changed from Boolean? to Boolean to fix type mismatch
     val checkedInAt: String?,
     val checkedOutAt: String?,
     val activeMode: String,
@@ -64,5 +64,6 @@ data class AttendanceRequestModel(
     val latitude: Double,
     val longitude: Double,
     val notes: String,
-    val bookingId: Int? = null
+    val bookingId: Int? = null,
+    val type: String
 )

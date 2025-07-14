@@ -1,9 +1,6 @@
 package com.example.infinite_track.utils
 
-import android.content.Context
 import android.util.Log
-import android.widget.Toast
-import androidx.annotation.StringRes
 import androidx.navigation.NavController
 import java.util.Calendar
 import kotlin.math.atan2
@@ -11,10 +8,6 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
-
-fun showToast(context: Context, @StringRes messageResId: Int, duration: Int = Toast.LENGTH_SHORT) {
-    Toast.makeText(context, context.getString(messageResId), duration).show()
-}
 
 fun getCurrentDate(): String {
     val calendar = Calendar.getInstance()
@@ -63,15 +56,4 @@ fun NavController.safeNavigate(route: String) {
     } catch (e: IllegalArgumentException) {
         Log.e("NavigationError", "Route $route not found in NavGraph: ${e.message}")
     }
-}
-
-fun calculateDistance(lat1: Float, lon1: Float, lat2: Float, lon2: Float): Float {
-    val radiusEarth = 6371000f
-    val dLat = Math.toRadians((lat2 - lat1).toDouble()).toFloat()
-    val dLon = Math.toRadians((lon2 - lon1).toDouble()).toFloat()
-    val a = sin(dLat / 2).pow(2) + cos(Math.toRadians(lat1.toDouble())).toFloat() * cos(
-        Math.toRadians(lat2.toDouble())
-    ).toFloat() * sin(dLon / 2).pow(2)
-    val c = 2 * atan2(sqrt(a.toDouble()), sqrt(1 - a.toDouble())).toFloat()
-    return radiusEarth * c
 }

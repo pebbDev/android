@@ -48,6 +48,7 @@ import com.example.infinite_track.presentation.components.loading.LoadingAnimati
 import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
+import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.UiState
@@ -68,12 +69,6 @@ fun AttendanceScreen(
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    // Observasi geofence status secara reaktif
-    val isUserInsideGeofence by viewModel.isUserInsideGeofence.collectAsStateWithLifecycle()
-
-    // Observasi check-in eligibility yang sudah dikombinasi secara reaktif
-    val isCheckInEnabled by viewModel.isCheckInEnabled.collectAsStateWithLifecycle()
 
     // Handle hasil pencarian lokasi dari LocationSearchScreen
     val selectedLocation = navController.currentBackStackEntry
@@ -174,6 +169,17 @@ fun AttendanceScreen(
                     android.util.Log.d(
                         "AttendanceScreen",
                         "Navigating to WFA booking screen with route: ${event.route}"
+                    )
+                }
+
+                is AttendanceViewModel.MapEvent.NavigateToFaceScanner -> {
+                    // Navigate to face scanner screen for attendance verification
+                    val action = if (event.isCheckIn) "checkin" else "checkout"
+                    val route = Screen.FaceScanner.createRoute(action)
+                    navController.navigate(route)
+                    android.util.Log.d(
+                        "AttendanceScreen",
+                        "Navigating to face scanner for $action"
                     )
                 }
             }
@@ -319,20 +325,19 @@ fun AttendanceScreen(
                                 currentLocationAddress = uiState.currentUserAddress.ifEmpty { "Mengambil lokasi saat ini..." },
                                 selectedWorkMode = uiState.selectedWorkMode,
                                 isBookingEnabled = uiState.isBookingEnabled,
-                                isCheckInEnabled = isCheckInEnabled, // Use reactive state from ViewModel
-                                checkInButtonText = if (isUserInsideGeofence) "Check In" else "Di Luar Jangkauan",
+                                isCheckInEnabled = uiState.isButtonEnabled, // Use isButtonEnabled from uiState
+                                checkInButtonText = uiState.buttonText,
                                 onSearchLocationClick = {
-                                    // Navigate to location search screen
                                     navController.navigate("location_search")
                                 },
                                 onModeSelected = { mode -> viewModel.onWorkModeSelected(mode) },
                                 onBookingClick = { viewModel.onBookingClicked() },
-                                onCheckInClick = { viewModel.onCheckInClicked() }
+                                onCheckInClick = { viewModel.onAttendanceButtonClicked() }
                             )
                         }
                     }
                 }
-            ) { paddingValues ->
+            ) { _ -> // Renamed paddingValues to _ to indicate it's intentionally unused
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Fullscreen Map dengan data dari ViewModel - Updated with WFO, WFH, and WFA locations
                     AttendanceMap(
@@ -380,7 +385,7 @@ fun AttendanceScreen(
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = "Pick Location",
-                            tint = androidx.compose.ui.graphics.Color.Red,
+                            tint = Color.Red,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -430,6 +435,42 @@ fun AttendanceScreen(
                     }
                 }
             }
+        }
+    }
+
+    // Handle face verification result from FaceScannerScreen
+    LaunchedEffect(Unit) {
+        // Get face verification result from savedStateHandle
+        val faceVerificationResult = navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.getLiveData<Boolean>("face_verification_result")
+
+        faceVerificationResult?.observeForever { isSuccess ->
+            if (isSuccess != null) {
+                // Call ViewModel to handle the result
+                viewModel.onFaceVerificationResult(isSuccess)
+                // Clear the result to prevent re-processing
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.remove<Boolean>("face_verification_result")
+            }
+        }
+    }
+
+    // Handle error dialog display
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { errorMessage ->
+            // Here you would typically show a dialog using DialogHelper
+            // For now, we'll log the error and clear it
+            android.util.Log.e("AttendanceScreen", "Error occurred: $errorMessage")
+
+            // TODO: Replace with actual DialogHelper implementation
+            // DialogHelper.showErrorDialog(context, errorMessage) {
+            //     viewModel.clearError()
+            // }
+
+            // For now, clear error after logging
+            viewModel.clearError()
         }
     }
 }

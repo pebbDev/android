@@ -1,12 +1,15 @@
 package com.example.infinite_track.presentation.components.button.attendance
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.components.button.ButtonStyle
 import com.example.infinite_track.presentation.components.button.StatefulButton
+import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.theme.Blue_700
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 /**
@@ -55,6 +58,12 @@ private fun AttendanceActionButtonsPreview() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Text(
+                text = "Attendance Action Buttons",
+                style = headline4,
+                color = Blue_700
+            )
+
             AttendanceActionButtons(
                 isBookingEnabled = true,
                 isCheckInEnabled = true,

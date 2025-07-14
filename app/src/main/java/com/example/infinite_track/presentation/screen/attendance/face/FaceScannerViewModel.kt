@@ -3,6 +3,7 @@ package com.example.infinite_track.presentation.screen.attendance.face
 import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.data.face.FaceDetectorHelper
@@ -50,7 +51,8 @@ data class FaceScannerState(
     val errorMessage: String? = null,
     val isProcessing: Boolean = false,
     val timeRemaining: Int = 20, // 20 detik sesuai kebutuhan
-    val showCountdown: Boolean = false
+    val showCountdown: Boolean = false,
+    val imageSize: Size? = null // Add image size for coordinate scaling
 )
 
 /**
@@ -63,9 +65,8 @@ class FaceScannerViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        private const val TIMEOUT_SECONDS = 20 // 20 detik timeout
+        private const val TIMEOUT_SECONDS = 20
         private const val LIVENESS_HOLD_DURATION = 1500L // 1.5 detik hold untuk stabilitas
-        private const val TAG = "FaceScannerViewModel"
     }
 
     // Change from mutableStateOf to StateFlow for better compatibility
@@ -153,8 +154,19 @@ class FaceScannerViewModel @Inject constructor(
             bottom = androidRect.bottom.toFloat()
         )
 
-        // Update bounding box untuk UI
-        _uiState.value = _uiState.value.copy(boundingBox = composeRect)
+        // Update bounding box dan image size untuk UI dengan coordinate scaling yang proper
+        _uiState.value = _uiState.value.copy(
+            boundingBox = composeRect,
+            imageSize = Size(
+                width = imageWidth.toFloat(),
+                height = imageHeight.toFloat()
+            )
+        )
+
+        // Debug log untuk melihat koordinat
+        println("Face detected - Android Rect: $androidRect")
+        println("Face detected - Compose Rect: $composeRect")
+        println("Image size: ${imageWidth}x${imageHeight}")
 
         // Cek apakah wajah berada di posisi yang baik
         if (!faceDetectorHelper.isFaceWellPositioned(face, imageWidth, imageHeight)) {
@@ -346,7 +358,7 @@ class FaceScannerViewModel @Inject constructor(
             livenessState = LivenessState.TIMEOUT,
             isProcessing = false,
             instructionText = "Waktu habis",
-            errorMessage = "Tidak dapat mendeteksi wajah dalam waktu ${TIMEOUT_SECONDS} detik. Silakan coba lagi.",
+            errorMessage = "Tidak dapat mendeteksi wajah dalam waktu $TIMEOUT_SECONDS detik. Silakan coba lagi.",
             showCountdown = false,
             timeRemaining = 0
         )

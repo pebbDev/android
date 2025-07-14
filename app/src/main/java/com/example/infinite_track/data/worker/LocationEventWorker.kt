@@ -41,7 +41,10 @@ class LocationEventWorker @AssistedInject constructor(
 
             // Validate input data
             if (eventType == null || locationId == -1 || eventTimestamp == null) {
-                Log.e(TAG, "Invalid input data: eventType=$eventType, locationId=$locationId, timestamp=$eventTimestamp")
+                Log.e(
+                    TAG,
+                    "Invalid input data: eventType=$eventType, locationId=$locationId, timestamp=$eventTimestamp"
+                )
                 return Result.failure()
             }
 

@@ -1,4 +1,4 @@
-package com.example.infinite_track.data.mapper
+package com.example.infinite_track.data.mapper.wfa
 
 import com.example.infinite_track.data.soucre.network.response.RecommendationItem
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation

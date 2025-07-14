@@ -19,11 +19,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.infinite_track.R
+import com.example.infinite_track.presentation.core.headline2
+import com.example.infinite_track.presentation.theme.Purple_400
+import com.example.infinite_track.presentation.theme.Purple_500
 
 @Composable
 fun ProfileCard(
@@ -67,13 +69,13 @@ fun ProfileCard(
         Text(
             text = name,
             fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
+            style = headline2,
+            color = Purple_500
         )
         Text(
             text = jobTitle,
             fontSize = 16.sp,
-            color = Color.Black
+            color = Purple_400
         )
     }
 }

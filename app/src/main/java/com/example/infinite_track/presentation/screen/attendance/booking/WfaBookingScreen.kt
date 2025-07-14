@@ -1,5 +1,6 @@
-package com.example.infinite_track.presentation.screen.booking
+package com.example.infinite_track.presentation.screen.attendance.booking
 
+import android.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,7 +27,7 @@ fun WfaBookingScreen(
                 context = context,
                 title = "Booking Berhasil",
                 textContent = "Permintaan booking WFA Anda telah berhasil dikirim.",
-                imageRes = android.R.drawable.ic_dialog_info
+                imageRes = R.drawable.ic_dialog_info
             ) {
                 // Navigate to home after user acknowledges success
                 navController.navigate(Screen.Home.route) {

@@ -4,12 +4,12 @@ import com.example.infinite_track.R
 
 data class Inbox(
     val id: Int,
-    val DateTime : String,
-    val Name : String,
-    val TypeLeave : String,
-    val CardImage : Int,
-    val CardStatus : String,
-    val AvailableDays : String,
+    val DateTime: String,
+    val Name: String,
+    val TypeLeave: String,
+    val CardImage: Int,
+    val CardStatus: String,
+    val AvailableDays: String,
     val onClick: () -> Unit,
     val onDelete: () -> Unit
 )

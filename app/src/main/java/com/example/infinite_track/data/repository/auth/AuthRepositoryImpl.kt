@@ -177,7 +177,10 @@ class AuthRepositoryImpl @Inject constructor(
                 Log.d("AuthRepositoryImpl", "Face embedding saved successfully for user $userId")
                 Result.success(Unit)
             } else {
-                Log.e("AuthRepositoryImpl", "Cannot save face embedding: User $userId not found in local database")
+                Log.e(
+                    "AuthRepositoryImpl",
+                    "Cannot save face embedding: User $userId not found in local database"
+                )
                 Result.failure(Exception("User not found in local database"))
             }
         } catch (e: Exception) {

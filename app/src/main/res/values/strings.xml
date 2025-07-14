@@ -10,6 +10,14 @@
     <string name="bottom_menu_profile">Profile</string>
 
 
+    <string name="face_detection_idle">Ready to scan</string>
+    <string name="face_detection_detecting">Detecting face</string>
+    <string name="face_detection_waiting_liveness">Please blink or move slightly</string>
+    <string name="face_detection_liveness_detected">Liveness detected</string>
+    <string name="face_detection_verifying">Verifying face</string>
+    <string name="face_detection_success">Verification successful</string>
+    <string name="face_detection_failure">Verification failed</string>
+    <string name="face_detection_timeout">Verification timeout</string>
     //Home
     <string name="see_more">See More</string>
     <string name="today_s_news">Today\'s News</string>
@@ -33,6 +41,16 @@
     <string name="leave_date_range">Start: %1$s - End: %2$s</string>
     <string name="work_from_office">Work From Office</string>
     <string name="work_from_home">Work From Home</string>
+    <string name="work_from_anywhere">Work From Anywhere</string>
+    <string name="work_mode_selector_title">Select Work Mode</string>
+    <string name="wfa_booking_title">WFA Booking</string>
+    <string name="personal_information">Personal Information</string>
+    <string name="location_information">Location Information</string>
+    <string name="radius_meters">Radius (meters)</string>
+    <string name="radius_placeholder">Enter radius in meters</string>
+    <string name="location_description">Location Description</string>
+    <string name="location_description_placeholder">Enter location description...</string>
+    <string name="book_location">Book Location</string>
     <string name="send">Send</string>
     <string name="write_notes">Write Notes</string>
     <string name="upload_image">Upload Image</string>
@@ -40,6 +58,10 @@
     <string name="photo_face_instruction">Please make sure your photo clearly shows your face</string>
 
     <!--  Leave Application  -->
+    <!-- Map & Location -->
+    <string name="location_permission_required">Location permission required</string>
+    <string name="location_permission_rationale">This app needs location permission to display map and validate your attendance.</string>
+    <string name="location_permission_settings">Location permission is required for this feature. Please enable permission in app settings.</string>
     //Pengajuan cuti
     <string name="leave_application">Leave Application</string>
     <string name="full_name">Full Name</string>

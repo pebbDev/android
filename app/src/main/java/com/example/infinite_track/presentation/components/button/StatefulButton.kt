@@ -3,15 +3,36 @@
 package com.example.infinite_track.presentation.components.button
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.theme.*
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.theme.Blue_500
+import com.example.infinite_track.presentation.theme.Blue_700
+import com.example.infinite_track.presentation.theme.Blue_Info
+import com.example.infinite_track.presentation.theme.Green_Success
+import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.presentation.theme.Red_Error
+import com.example.infinite_track.presentation.theme.Yellow_Warning
 
 enum class ButtonStyle {
     Elevated, Outlined
@@ -60,8 +81,10 @@ fun StatefulButton(
                     contentColor = Color.White
                 )
             ) {
-                Text(text)
-
+                Text(
+                    text = text,
+                    style = body1
+                )
             }
         }
 
@@ -78,7 +101,10 @@ fun StatefulButton(
                         contentColor = contentColorForSelected
                     )
                 ) {
-                    Text(text)
+                    Text(
+                        text = text,
+                        style = body1
+                    )
                 }
             } else {
                 // State: Outlined & Unselected -> Tampil sebagai OutlinedButton
@@ -95,7 +121,10 @@ fun StatefulButton(
                         if (enabled) stateColor else stateColor.copy(alpha = 0.5f)
                     )
                 ) {
-                    Text(text)
+                    Text(
+                        text = text,
+                        style = body1
+                    )
                 }
             }
         }
@@ -113,12 +142,20 @@ fun StatefulButton_Previews() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Elevated Style", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Elevated Style",
+                style = headline4,
+                color = Blue_700
+            )
             StatefulButton(text = "Elevated Default", style = ButtonStyle.Elevated, onClick = {})
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Outlined (Unselected)", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Outlined (Unselected)",
+                style = headline4,
+                color = Blue_700
+            )
             StatefulButton(text = "Outlined Default", style = ButtonStyle.Outlined, onClick = {})
             StatefulButton(
                 text = "Success State",
@@ -138,7 +175,11 @@ fun StatefulButton_Previews() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Outlined (Selected) - Toggle Me", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Outlined (Selected) - Toggle Me",
+                style = headline4,
+                color = Blue_700
+            )
             StatefulButton(
                 text = if (isSelected) "Selected (Success)" else "Unselected (Success)",
                 style = ButtonStyle.Outlined,

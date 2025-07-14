@@ -1,17 +1,22 @@
 package com.example.infinite_track.presentation.components.button.attendance
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.R
 import com.example.infinite_track.presentation.components.button.RadioButtonWithText
+import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.theme.Blue_700
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 /**
- * Komponen untuk memilih mode kerja antara Work From Home dan Work From Anywhere.
+ * Komponen selector untuk memilih mode kerja (Work From Home atau Work From Anywhere)
  *
- * @param selectedMode Mode yang sedang dipilih ("WFH" atau "WFA")
+ * @param selectedMode Mode yang dipilih saat ini ("WFH" atau "WFA")
  * @param onModeSelected Callback yang dipanggil ketika mode dipilih
  */
 @Composable
@@ -25,13 +30,13 @@ fun WorkModeSelector(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         RadioButtonWithText(
-            text = "Work From Home",
+            text = stringResource(R.string.work_from_home),
             selected = selectedMode == "WFH",
             onClick = { onModeSelected("WFH") }
         )
 
         RadioButtonWithText(
-            text = "Work From Anywhere",
+            text = stringResource(R.string.work_from_anywhere),
             selected = selectedMode == "WFA",
             onClick = { onModeSelected("WFA") }
         )
@@ -46,14 +51,23 @@ private fun WorkModeSelectorPreview() {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            WorkModeSelector(
-                selectedMode = "WFH",
-                onModeSelected = {}
+            Text(
+                text = stringResource(R.string.work_mode_selector_title),
+                style = headline4,
+                color = Blue_700
             )
 
+            var selectedMode by remember { mutableStateOf("WFH") }
+
             WorkModeSelector(
-                selectedMode = "WFA",
-                onModeSelected = {}
+                selectedMode = selectedMode,
+                onModeSelected = { selectedMode = it }
+            )
+
+            Text(
+                text = "Selected: $selectedMode",
+                style = headline4,
+                color = Blue_700
             )
         }
     }

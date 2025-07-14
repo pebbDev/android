@@ -32,7 +32,7 @@ class FaceProcessor @Inject constructor(
 ) {
     companion object {
         private const val TAG = "FaceProcessor"
-        private const val MODEL_FILE = "face_embeddings.tflite"
+        private const val MODEL_FILE = "face_recognition_metadata.tflite"
         private const val IMAGE_SIZE = 112 // Standard size for face recognition models
         private const val EMBEDDING_SIZE = 128 // Output size of the embedding vector
     }
@@ -63,7 +63,10 @@ class FaceProcessor @Inject constructor(
     suspend fun generateEmbedding(photoUrl: String): Result<ByteArray> =
         withContext(Dispatchers.IO) {
             try {
+                Log.d(TAG, "Starting generateEmbedding for URL: $photoUrl")
+
                 if (photoUrl.isBlank()) {
+                    Log.e(TAG, "Photo URL is empty")
                     return@withContext Result.failure(Exception("Photo URL is empty"))
                 }
 
@@ -71,26 +74,108 @@ class FaceProcessor @Inject constructor(
                     Exception("TensorFlow Lite interpreter not initialized")
                 )
 
+                Log.d(TAG, "TensorFlow Lite interpreter initialized successfully")
+
                 // 1. Download image from URL
-                val bitmap = downloadImage(photoUrl) ?: return@withContext Result.failure(
-                    Exception("Failed to download or process image")
+                Log.d(TAG, "Downloading image from URL: $photoUrl")
+                val bitmap = downloadImage(photoUrl)
+
+                if (bitmap == null) {
+                    Log.e(
+                        TAG,
+                        "Failed to download or decode image from URL: $photoUrl"
+                    )
+                    return@withContext Result.failure(
+                        Exception("Failed to download or process image from URL: $photoUrl")
+                    )
+                }
+
+                Log.d(
+                    TAG,
+                    "Image downloaded successfully, size: ${bitmap.width}x${bitmap.height}"
                 )
 
                 // 2. Process image using ImageProcessor (resize and normalize)
+                Log.d(
+                    TAG,
+                    "Processing image (resize to ${IMAGE_SIZE}x${IMAGE_SIZE} and normalize)"
+                )
                 val tensorImage = TensorImage.fromBitmap(bitmap)
                 val processedImage = imageProcessor.process(tensorImage)
+                Log.d(TAG, "Image processed successfully")
 
                 // 3. Run inference to get face embedding
+                Log.d(TAG, "Running TensorFlow Lite inference")
                 val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
-                tflite.run(processedImage.buffer, outputBuffer)
+
+                try {
+                    tflite.run(processedImage.buffer, outputBuffer)
+                    Log.d(TAG, "TensorFlow Lite inference completed successfully")
+                } catch (e: IllegalArgumentException) {
+                    Log.e(
+                        TAG,
+                        "Tensor shape mismatch during inference. Expected output: [1, $EMBEDDING_SIZE]",
+                        e
+                    )
+                    return@withContext Result.failure(
+                        Exception("Model output size mismatch. Expected [$EMBEDDING_SIZE] dimensions, but got different size.")
+                    )
+                }
 
                 // 4. Convert FloatArray to ByteArray
+                Log.d(TAG, "Converting float array to byte array")
                 val embedding = convertFloatsToBytes(outputBuffer[0])
+                Log.d(
+                    TAG,
+                    "Face embedding generated successfully, final size: ${embedding.size} bytes"
+                )
 
                 // 5. Return success result with embedding
                 Result.success(embedding)
             } catch (e: Exception) {
-                Log.e(TAG, "Error generating face embedding", e)
+                Log.e(TAG, "Error generating face embedding from URL: $photoUrl", e)
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Generates a face embedding directly from a Bitmap
+     * @param bitmap Bitmap of the face image
+     * @return Result containing ByteArray embedding or error
+     */
+    suspend fun generateEmbeddingFromBitmap(bitmap: Bitmap): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            try {
+                val tflite = interpreter ?: return@withContext Result.failure(
+                    Exception("TensorFlow Lite interpreter not initialized")
+                )
+
+                // Process bitmap using ImageProcessor (resize and normalize)
+                val tensorImage = TensorImage.fromBitmap(bitmap)
+                val processedImage = imageProcessor.process(tensorImage)
+
+                // Run inference to get face embedding
+                val outputBuffer = Array(1) { FloatArray(EMBEDDING_SIZE) }
+
+                try {
+                    tflite.run(processedImage.buffer, outputBuffer)
+                } catch (e: IllegalArgumentException) {
+                    // Handle the tensor shape mismatch error
+                    Log.e(TAG, "Tensor shape mismatch. Expected output size: $EMBEDDING_SIZE", e)
+                    return@withContext Result.failure(
+                        Exception("Model output size mismatch. Expected $EMBEDDING_SIZE dimensions.")
+                    )
+                }
+
+                // Convert FloatArray to ByteArray
+                val embedding = convertFloatsToBytes(outputBuffer[0])
+
+                // Log success for debugging
+                Log.d(TAG, "Successfully generated embedding of size: ${embedding.size}")
+
+                Result.success(embedding)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error generating face embedding from bitmap", e)
                 Result.failure(e)
             }
         }
@@ -108,26 +193,107 @@ class FaceProcessor @Inject constructor(
     }
 
     /**
-     * Downloads and decodes an image from a URL
+     * Downloads and decodes an image from a URL with SSL error handling
      */
     private suspend fun downloadImage(imageUrl: String): Bitmap? = withContext(Dispatchers.IO) {
         try {
+            Log.d(TAG, "Attempting to download image from: $imageUrl")
+
             val url = URL(imageUrl)
             val connection = url.openConnection() as HttpURLConnection
-            connection.doInput = true
+
+            // Configure connection with better SSL handling
+            connection.apply {
+                doInput = true
+                connectTimeout = 15000 // 15 seconds timeout
+                readTimeout = 30000 // 30 seconds timeout
+                requestMethod = "GET"
+
+                // Add user agent to avoid blocking
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Android)")
+                setRequestProperty("Accept", "image/*")
+                setRequestProperty("Connection", "close")
+            }
+
+            Log.d(TAG, "Connecting to image URL...")
             connection.connect()
 
-            val inputStream = connection.inputStream
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream.close()
-            connection.disconnect()
+            val responseCode = connection.responseCode
+            Log.d(TAG, "HTTP Response Code: $responseCode")
 
-            bitmap
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val inputStream = connection.inputStream
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream.close()
+                connection.disconnect()
+
+                if (bitmap != null) {
+                    Log.d(
+                        TAG,
+                        "Image downloaded successfully: ${bitmap.width}x${bitmap.height}"
+                    )
+                } else {
+                    Log.e(TAG, "Failed to decode bitmap from input stream")
+                }
+
+                bitmap
+            } else {
+                Log.e(TAG, "HTTP Error: $responseCode - ${connection.responseMessage}")
+                connection.disconnect()
+                null
+            }
+
+        } catch (e: javax.net.ssl.SSLHandshakeException) {
+            Log.e(TAG, "SSL Handshake failed. Trying alternative approach...", e)
+
+            // Try alternative approach for SSL issues
+            downloadImageWithRetry(imageUrl)
+
         } catch (e: IOException) {
-            Log.e(TAG, "Error downloading image", e)
+            Log.e(TAG, "IO Error downloading image from: $imageUrl", e)
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error downloading image from: $imageUrl", e)
             null
         }
     }
+
+    /**
+     * Alternative download method with retry mechanism
+     */
+    private suspend fun downloadImageWithRetry(imageUrl: String): Bitmap? =
+        withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "Attempting alternative download method for: $imageUrl")
+
+                // Create URL connection with different approach
+                val url = URL(imageUrl)
+                val connection = url.openConnection()
+
+                connection.apply {
+                    connectTimeout = 20000
+                    readTimeout = 40000
+                    setRequestProperty("User-Agent", "Android-App/1.0")
+                }
+
+                val inputStream = connection.getInputStream()
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream.close()
+
+                if (bitmap != null) {
+                    Log.d(
+                        TAG,
+                        "Alternative download successful: ${bitmap.width}x${bitmap.height}"
+                    )
+                }
+
+                bitmap
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Alternative download also failed", e)
+                null
+            }
+        }
 
 
     /**

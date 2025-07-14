@@ -1,0 +1,78 @@
+{
+    "checksum": "a5753370a87d2716ea7c2903d47f1a46b840b90ddfd8ec554bbdfba559fe3b58",
+    "data": {
+    "id": "9061d3d8-d33c-4309-8f24-bfc31b0e5cf7",
+    "createdAt": 1752452659488,
+    "updatedAt": 1752452667633,
+    "title": "/unittests  Generate tests for createNotificati...",
+    "messages": [
+        {
+            "id": "c9bd0601-5949-4fca-90a5-28c255fad40b",
+            "role": "user",
+            "content": [
+                {
+                    "type": "command",
+                    "commandName": "unittests"
+                },
+                {
+                    "type": "text",
+                    "text": " Generate tests for createNotificationChannel method"
+                }
+            ],
+            "createdAt": 1752452659494,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "command",
+                                "attrs": {
+                                    "label": "unittests"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "/unittests"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": " Generate tests for createNotificationChannel method"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "85e74e03-c52f-43ee-aa16-a028316b3bba",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "I'll help you generate tests for the `createNotificationChannel` method. Let me first search for this method to understand its implementation and then identify the testing framework used in the project."
+                },
+                {
+                    "type": "toolCall",
+                    "toolCallId": "toolu_01UHMwEpfmeDb1P3sA9kRNo6",
+                    "statusText": "Fulltext search",
+                    "status": "IN_PROGRESS",
+                    "isHidden": false
+                }
+            ],
+            "context": {
+                "author": "Unit Test Agent",
+                "operationId": "3189d315-b40a-4f56-9a6c-9670e3abd6c8"
+            },
+            "createdAt": 1752452662926,
+            "isInternal": false
+        }
+    ],
+    "isAgent": true,
+    "isUnitTestsAgent": true
+}
+}

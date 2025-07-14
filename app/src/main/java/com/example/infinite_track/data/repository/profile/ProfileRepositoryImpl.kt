@@ -35,7 +35,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 // Return success with updated model
                 Result.success(updatedUserModel)
             } else {
-                Result.failure(Exception(response.message ?: "Unknown error"))
+                Result.failure(Exception(response.message))
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -5,16 +5,13 @@ import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.coroutines.resume
 
 /**
- * Use Case untuk mendapatkan koordinat GPS pengguna saat ini secara real-time
- * Digunakan untuk mendapatkan lokasi terkini, bukan lokasi WFH yang tersimpan
+ * Use Case untuk mendapatkan koordinat GPS pengguna dengan logika fallback yang pragmatis
+ * Mendukung dua mode: GPS real-time atau WFH dari database
  */
 class GetCurrentCoordinatesUseCase @Inject constructor(
     private val fusedLocationProviderClient: FusedLocationProviderClient,
@@ -22,8 +19,7 @@ class GetCurrentCoordinatesUseCase @Inject constructor(
 ) {
 
     /**
-     * Mendapatkan koordinat GPS pengguna saat ini secara real-time
-     * Prioritas: GPS Real-time -> WFH dari Database -> Default Jakarta
+     * Mendapatkan koordinat pengguna dengan logika fallback
      * @param useRealTimeGPS jika true, akan mengambil GPS real-time. Jika false, akan mengambil dari database
      * @return Result berisi Pair<latitude, longitude>
      */
@@ -31,20 +27,34 @@ class GetCurrentCoordinatesUseCase @Inject constructor(
     suspend operator fun invoke(useRealTimeGPS: Boolean = true): Result<Pair<Double, Double>> {
         return try {
             if (useRealTimeGPS) {
-                // Ambil GPS real-time
-                getGPSRealTime()
+                // Coba GPS real-time dulu
+                val gpsResult = getGPSRealTime()
+                if (gpsResult.isSuccess) {
+                    gpsResult
+                } else {
+                    // Jika GPS gagal, fallback ke database
+                    android.util.Log.w(
+                        "GetCurrentCoordinatesUseCase",
+                        "GPS failed, falling back to WFH location from database"
+                    )
+                    getFromDatabase()
+                }
             } else {
-                // Ambil dari database (behavior lama)
+                // Langsung ambil dari database
                 getFromDatabase()
             }
         } catch (e: Exception) {
-            // Fallback ke database jika GPS gagal
-            getFromDatabase()
+            android.util.Log.e(
+                "GetCurrentCoordinatesUseCase",
+                "Error getting coordinates: ${e.message}"
+            )
+            Result.failure(e)
         }
     }
 
     /**
      * Mengambil GPS coordinates real-time dari device
+     * Tidak ada fallback internal - jika gagal akan return Result.failure
      */
     @SuppressLint("MissingPermission")
     private suspend fun getGPSRealTime(): Result<Pair<Double, Double>> =
@@ -52,7 +62,6 @@ class GetCurrentCoordinatesUseCase @Inject constructor(
             try {
                 val cancellationTokenSource = CancellationTokenSource()
 
-                // Use getCurrentLocation with high accuracy
                 val locationTask = fusedLocationProviderClient.getCurrentLocation(
                     Priority.PRIORITY_HIGH_ACCURACY,
                     cancellationTokenSource.token
@@ -69,13 +78,9 @@ class GetCurrentCoordinatesUseCase @Inject constructor(
                     } else {
                         android.util.Log.w(
                             "GetCurrentCoordinatesUseCase",
-                            "GPS location is null, falling back to database"
+                            "GPS location is null"
                         )
-                        // Fallback ke database
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val dbResult = getFromDatabase()
-                            continuation.resume(dbResult)
-                        }
+                        continuation.resume(Result.failure(Exception("GPS location is null")))
                     }
                 }
 
@@ -84,11 +89,7 @@ class GetCurrentCoordinatesUseCase @Inject constructor(
                         "GetCurrentCoordinatesUseCase",
                         "GPS location failed: ${exception.message}"
                     )
-                    // Fallback ke database
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val dbResult = getFromDatabase()
-                        continuation.resume(dbResult)
-                    }
+                    continuation.resume(Result.failure(exception))
                 }
 
                 // Handle cancellation
@@ -106,11 +107,12 @@ class GetCurrentCoordinatesUseCase @Inject constructor(
         }
 
     /**
-     * Mengambil coordinates dari database (behavior lama)
+     * Mengambil coordinates WFH dari database
+     * Jika tidak ada data WFH, akan return Result.failure
      */
     private suspend fun getFromDatabase(): Result<Pair<Double, Double>> {
         return try {
-            // Coba ambil dari Room Database (lokasi WFH pengguna)
+            // Ambil dari Room Database (lokasi WFH pengguna)
             val userProfile = userDao.getUserProfile()
 
             if (userProfile?.latitude != null && userProfile.longitude != null) {
@@ -121,17 +123,19 @@ class GetCurrentCoordinatesUseCase @Inject constructor(
                 )
                 Result.success(Pair(userProfile.latitude, userProfile.longitude))
             } else {
-                // Fallback ke koordinat default Jakarta jika tidak ada data WFH
-                android.util.Log.d("GetCurrentCoordinatesUseCase", "Using default Jakarta coordinates")
-                Result.success(Pair(-6.2088, 106.8456)) // Jakarta coordinates
+                // Tidak ada data WFH - return failure
+                android.util.Log.w(
+                    "GetCurrentCoordinatesUseCase",
+                    "No WFH location data found in database"
+                )
+                Result.failure(Exception("No WFH location data found. Please set your work from home location."))
             }
         } catch (e: Exception) {
             android.util.Log.e(
                 "GetCurrentCoordinatesUseCase",
                 "Error getting coordinates from database: ${e.message}"
             )
-            // Fallback ke koordinat default Jakarta jika terjadi error
-            Result.success(Pair(-6.2088, 106.8456)) // Jakarta coordinates
+            Result.failure(e)
         }
     }
 }

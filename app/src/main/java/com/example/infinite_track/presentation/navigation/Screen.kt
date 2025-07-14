@@ -41,9 +41,9 @@ sealed class Screen(val route: String) {
     }
 
     // Face Scanner
-    data object FaceScanner : Screen("face_scanner/{currentTime}/{currentAddress}") {
-        fun createRoute(currentTime: String, currentAddress: String): String {
-            return "face_scanner/$currentTime/$currentAddress"
+    data object FaceScanner : Screen("face_scanner?action={action}") {
+        fun createRoute(action: String = "checkin"): String {
+            return "face_scanner?action=$action"
         }
     }
 }

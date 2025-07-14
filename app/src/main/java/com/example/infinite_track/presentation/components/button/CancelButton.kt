@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.theme.Red_Error
 import com.example.infinite_track.presentation.theme.White
 
 @Composable
@@ -30,7 +31,7 @@ fun CancelButton(
             .height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Red,
+            containerColor = Red_Error,
             contentColor = White,
             disabledContentColor = White.copy(alpha = 0.3f),
             disabledContainerColor = Color.Red.copy(alpha = 0.6f)

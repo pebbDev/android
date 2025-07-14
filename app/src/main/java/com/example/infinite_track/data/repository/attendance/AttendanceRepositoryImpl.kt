@@ -5,15 +5,13 @@ import com.example.infinite_track.data.mapper.attendance.toActiveSession
 import com.example.infinite_track.data.mapper.attendance.toDomain
 import com.example.infinite_track.data.mapper.attendance.toDto
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
-import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.repository.AttendanceRepository
-import com.example.infinite_track.presentation.geofencing.GeofenceManager
-import com.example.infinite_track.utils.calculateDistance
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,32 +19,11 @@ import javax.inject.Singleton
 @Singleton
 class AttendanceRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
-    private val attendancePreference: AttendancePreference,
-    private val geofenceManager: GeofenceManager
+    private val attendancePreference: AttendancePreference
 ) : AttendanceRepository {
 
     companion object {
         private const val TAG = "AttendanceRepository"
-    }
-
-    /**
-     * Checks if a user's location is within the allowed radius of a target location
-     */
-    private fun isWithinGeofence(
-        userLocation: android.location.Location,
-        targetLocation: Location
-    ): Boolean {
-        val distance = calculateDistance(
-            targetLocation.latitude.toFloat(),
-            targetLocation.longitude.toFloat(),
-            userLocation.latitude.toFloat(),
-            userLocation.longitude.toFloat()
-        )
-        Log.d(
-            TAG,
-            "Calculated Distance: $distance meters, Allowed radius: ${targetLocation.radius} meters"
-        )
-        return distance <= targetLocation.radius
     }
 
     /**
@@ -68,53 +45,29 @@ class AttendanceRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Performs check-in operation with simplified logic
-     * No longer calls getTodayStatus() - relies on provided targetLocation parameter
+     * Performs check-in operation - simplified without client-side location validation
+     * Backend will handle all location validation
      */
-    override suspend fun checkIn(
-        currentUserLocation: android.location.Location,
-        targetLocation: Location,
-        request: AttendanceRequestModel
-    ): Result<ActiveAttendanceSession> {
+    override suspend fun checkIn(request: AttendanceRequestModel): Result<ActiveAttendanceSession> {
         return try {
-            // Validate location using provided targetLocation parameter
-            val isWithinGeofence = isWithinGeofence(currentUserLocation, targetLocation)
-
-            if (!isWithinGeofence) {
-                return Result.failure(Exception("Anda berada di luar radius lokasi yang diizinkan."))
-            }
-
             // Convert domain model to DTO using mapper
             val requestDto = request.toDto()
 
-            // Call API for check-in
+            // Call API for check-in - backend handles location validation
             val response = apiService.checkIn(requestDto)
 
             if (response.success) {
                 // Save the attendance ID for later checkout
                 attendancePreference.saveActiveAttendanceId(response.data.idAttendance)
-
-                // Start geofence monitoring after successful check-in using provided targetLocation
-                try {
-                    geofenceManager.addGeofence(
-                        id = targetLocation.locationId.toString(),
-                        latitude = targetLocation.latitude,
-                        longitude = targetLocation.longitude,
-                        radius = targetLocation.radius.toFloat()
-                    )
-                    Log.d(
-                        TAG,
-                        "Geofence monitoring started for location ${targetLocation.locationId}"
-                    )
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to start geofence monitoring", e)
-                    // Don't fail the entire check-in process if geofence setup fails
-                }
+                Log.d(
+                    TAG,
+                    "Check-in successful, saved attendance ID: ${response.data.idAttendance}"
+                )
 
                 // Convert DTO to ActiveAttendanceSession domain model using mapper
                 Result.success(response.data.toActiveSession())
             } else {
-                Result.failure(Exception(response.message ?: "Unknown error"))
+                Result.failure(Exception(response.message))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error during check-in", e)
@@ -123,35 +76,33 @@ class AttendanceRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Performs check-out operation with simplified logic
-     * No longer calls getTodayStatus() - relies on provided locationId parameter
+     * Performs check-out operation with attendanceId and coordinates
+     * Backend will handle location validation for checkout
      */
-    override suspend fun checkOut(locationId: Int): Result<ActiveAttendanceSession> {
+    override suspend fun checkOut(
+        attendanceId: Int,
+        latitude: Double,
+        longitude: Double
+    ): Result<ActiveAttendanceSession> {
         return try {
-            // Get the active attendance ID
-            val attendanceId = getActiveAttendanceId()
-                ?: return Result.failure(Exception("No active attendance session found"))
+            // Create checkout request DTO with coordinates
+            val checkOutRequestDto = CheckOutRequestDto(
+                latitude = latitude,
+                longitude = longitude
+            )
 
-            // Call API for check-out
-            val response = apiService.checkOut(attendanceId)
+            // Call API for check-out with attendanceId in URL and coordinates in body
+            val response = apiService.checkOut(attendanceId, checkOutRequestDto)
 
             if (response.success) {
                 // Clear the active attendance ID
                 attendancePreference.clearActiveAttendanceId()
-
-                // Stop geofence monitoring after successful check-out using provided locationId
-                try {
-                    geofenceManager.removeGeofence(locationId.toString())
-                    Log.d(TAG, "Geofence monitoring stopped for location $locationId")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to stop geofence monitoring", e)
-                    // Don't fail the entire check-out process if geofence removal fails
-                }
+                Log.d(TAG, "Check-out successful, cleared attendance ID")
 
                 // Convert DTO to ActiveAttendanceSession domain model using mapper
                 Result.success(response.data.toActiveSession())
             } else {
-                Result.failure(Exception(response.message ?: "Unknown error"))
+                Result.failure(Exception(response.message))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error during check-out", e)
@@ -163,7 +114,12 @@ class AttendanceRepositoryImpl @Inject constructor(
      * Retrieves the active attendance ID from preferences
      */
     override suspend fun getActiveAttendanceId(): Int? {
-        return attendancePreference.getActiveAttendanceId().first()
+        return try {
+            attendancePreference.getActiveAttendanceId().first()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting active attendance ID", e)
+            null
+        }
     }
 
     /**
@@ -172,18 +128,11 @@ class AttendanceRepositoryImpl @Inject constructor(
     override suspend fun sendLocationEvent(request: LocationEventRequest): Result<Unit> {
         return try {
             val response = apiService.sendLocationEvent(request)
-
             if (response.isSuccessful) {
-                Log.d(
-                    TAG,
-                    "Location event sent successfully: ${request.eventType} for location ${request.locationId}"
-                )
+                Log.d(TAG, "Location event sent successfully: ${request.eventType}")
                 Result.success(Unit)
             } else {
-                val errorMsg =
-                    "Failed to send location event: ${response.code()} ${response.message()}"
-                Log.e(TAG, errorMsg)
-                Result.failure(Exception(errorMsg))
+                Result.failure(Exception("Failed to send location event: ${response.code()} ${response.message()}"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error sending location event", e)

@@ -1,4 +1,4 @@
-package com.example.infinite_track.presentation.screen.booking
+package com.example.infinite_track.presentation.screen.attendance.booking
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

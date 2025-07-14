@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.components.base.StaticBaseLayout
 import com.example.infinite_track.presentation.components.button.InfiniteTracButtonBack
 import com.example.infinite_track.presentation.components.empty.ComingSoonAnimation
 import com.example.infinite_track.presentation.core.headline1

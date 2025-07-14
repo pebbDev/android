@@ -50,27 +50,34 @@ class FaceDetectorHelper @Inject constructor() {
 
             faceDetector.process(image)
                 .addOnSuccessListener { faces ->
+                    println("ML Kit face detection completed. Found ${faces.size} faces")
                     if (faces.isNotEmpty()) {
                         // Return the first (largest) detected face
                         val largestFace =
                             faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
                         if (largestFace != null) {
+                            println("Largest face found at: ${largestFace.boundingBox}")
                             onResult(Result.success(largestFace))
                         } else {
+                            println("No valid face detected despite faces list not empty")
                             onResult(Result.failure(Exception("No valid face detected")))
                         }
                     } else {
+                        println("No faces detected in current frame")
                         onResult(Result.failure(Exception("No faces detected")))
                     }
                 }
                 .addOnFailureListener { exception ->
+                    println("ML Kit face detection failed: ${exception.message}")
                     onResult(Result.failure(exception))
                 }
                 .addOnCompleteListener {
-                    // Clean up resources
+                    // Clean up resources - ALWAYS close imageProxy here
                     imageProxy.close()
+                    println("ImageProxy closed after ML Kit processing")
                 }
         } else {
+            println("MediaImage is null in imageProxy")
             onResult(Result.failure(Exception("Image is null")))
             imageProxy.close()
         }

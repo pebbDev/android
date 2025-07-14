@@ -47,7 +47,9 @@ fun MainScreen(
         Screen.DetailMyAttendance.route,
         Screen.DetailListTimeOff.route,
         Screen.TimeOffRequest.route,
-        Screen.FAQ.route
+        Screen.FAQ.route,
+        Screen.FaceScanner.route, // Hide bottom bar for face scanner
+        Screen.LocationSearch.route // Hide bottom bar for location search
     )
 
     val isBottomBarVisible = currentRoute !in screensWithoutBottomBar

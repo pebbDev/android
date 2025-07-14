@@ -3,10 +3,8 @@ package com.example.infinite_track.data.mapper.attendance
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
 import com.example.infinite_track.data.soucre.network.response.ActiveLocation
 import com.example.infinite_track.data.soucre.network.response.AttendanceData
-import com.example.infinite_track.data.soucre.network.response.AttendanceItem
 import com.example.infinite_track.data.soucre.network.response.TodayStatusData
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
-import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.Location
@@ -19,7 +17,7 @@ import com.example.infinite_track.data.soucre.network.response.CheckinWindow as 
 fun TodayStatusData.toDomain(): TodayStatus {
     return TodayStatus(
         canCheckIn = this.canCheckIn,
-        canCheckOut = this.canCheckOut,
+        canCheckOut = this.canCheckOut == true, // Handle null with default false
         checkedInAt = this.checkedInAt,
         checkedOutAt = this.checkedOutAt,
         activeMode = this.activeMode,
@@ -49,7 +47,7 @@ fun CheckinWindowDto.toDomain(): CheckinWindow {
 fun ActiveLocation.toDomain(): Location {
     return Location(
         locationId = this.locationId,
-        description = this.description ?: "",
+        description = this.description,
         latitude = this.latitude,
         longitude = this.longitude,
         radius = this.radius,

@@ -73,7 +73,7 @@ class BookingRepositoryImpl @Inject constructor(
                 val errorBody = e.response()?.errorBody()?.string()
                 val errorResponse = try {
                     gson.fromJson(errorBody, ErrorResponse::class.java)
-                } catch (jsonError: Exception) {
+                } catch (e: Exception) {
                     null
                 }
                 val errorMessage = errorResponse?.message ?: "Terjadi kesalahan jaringan."

@@ -14,9 +14,6 @@ object NotificationHelper {
     private const val CHANNEL_ID = "geofence_channel_01"
     private const val CHANNEL_NAME = "Geofence Notifications"
 
-    // Navigation destination constant - to be used by the navigation system
-//    private const val NAVIGATION_DESTINATION_ATTENDANCE = "attendance_screen"
-
     fun createNotificationChannel(context: Context) {
         val channel = NotificationChannel(
             CHANNEL_ID,

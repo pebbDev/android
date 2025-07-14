@@ -10,9 +10,10 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import com.example.infinite_track.data.soucre.dummy.dummyTimeOff
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
+import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
+import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
+import com.example.infinite_track.presentation.screen.attendance.face.FaceScannerScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
-import com.example.infinite_track.presentation.screen.booking.WfaBookingScreen
-import com.example.infinite_track.presentation.screen.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.contact.ContactScreen
 import com.example.infinite_track.presentation.screen.contact.ContactsViewModel
 import com.example.infinite_track.presentation.screen.history.HistoryScreen
@@ -191,6 +192,24 @@ fun NavGraphBuilder.mainContentNavGraph(
         val viewModel: WfaBookingViewModel = hiltViewModel()
         WfaBookingScreen(
             viewModel = viewModel,
+            navController = navController
+        )
+    }
+
+    // Face Scanner Screen - MOVED from AppNavGraph to MainContentNavGraph
+    composable(
+        route = Screen.FaceScanner.route,
+        arguments = listOf(
+            navArgument("action") {
+                type = NavType.StringType
+                defaultValue = "checkin"
+            }
+        )
+    ) { backStackEntry ->
+        val action = backStackEntry.arguments?.getString("action") ?: "checkin"
+
+        FaceScannerScreen(
+            action = action,
             navController = navController
         )
     }

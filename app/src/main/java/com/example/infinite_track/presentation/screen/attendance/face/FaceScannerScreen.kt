@@ -2,9 +2,7 @@ package com.example.infinite_track.presentation.screen.attendance.face
 
 import android.graphics.Bitmap
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -18,11 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SentimentSatisfied
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
@@ -39,40 +35,62 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.createBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.infinite_track.presentation.components.button.ButtonStateType
+import com.example.infinite_track.presentation.components.button.ButtonStyle
+import com.example.infinite_track.presentation.components.button.StatefulButton
 import com.example.infinite_track.presentation.components.cameras.FaceBoundingBox
-import com.example.infinite_track.presentation.components.tittle.Tittle
+import com.example.infinite_track.presentation.components.loading.LoadingAnimation
+import com.example.infinite_track.presentation.theme.Blue_500
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import androidx.camera.core.Preview as CameraPreview
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun FaceScannerScreen(
-    currentTime: String,
-    currentAddress: String,
+    action: String,
     navController: NavController,
     modifier: Modifier = Modifier,
     viewModel: FaceScannerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Camera permission state
+    val cameraPermissionState = rememberPermissionState(
+        android.Manifest.permission.CAMERA
+    )
+
     // Camera executor
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    // Request camera permission when screen opens
+    LaunchedEffect(Unit) {
+        if (!cameraPermissionState.status.isGranted) {
+            cameraPermissionState.launchPermissionRequest()
+        }
+    }
 
     // Handle navigation based on verification result
     LaunchedEffect(uiState.livenessState) {
@@ -100,43 +118,117 @@ fun FaceScannerScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Layer 1: Camera Preview with CameraX integration
+        when {
+            cameraPermissionState.status.isGranted -> {
+                // Camera permission granted - show camera interface
+                CameraContent(
+                    modifier = Modifier.fillMaxSize(),
+                    action = action,
+                    uiState = uiState,
+                    cameraExecutor = cameraExecutor,
+                    onImageAnalysis = { imageProxy, bitmap ->
+                        viewModel.processImageProxy(imageProxy, bitmap)
+                    },
+                    onRetryClick = {
+                        viewModel.resetScanner()
+                    },
+                    onCloseClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            cameraPermissionState.status.shouldShowRationale -> {
+                // Show rationale for camera permission
+                CameraPermissionRationale(
+                    onRequestPermission = {
+                        cameraPermissionState.launchPermissionRequest()
+                    },
+                    onCloseClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            else -> {
+                // Permission denied - show permission request UI
+                CameraPermissionDenied(
+                    onRequestPermission = {
+                        cameraPermissionState.launchPermissionRequest()
+                    },
+                    onCloseClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CameraContent(
+    modifier: Modifier = Modifier,
+    action: String,
+    uiState: FaceScannerState,
+    cameraExecutor: ExecutorService,
+    onImageAnalysis: (ImageProxy, Bitmap) -> Unit,
+    onRetryClick: () -> Unit,
+    onCloseClick: () -> Unit
+) {
+    val density = LocalDensity.current
+    var previewSize by remember { mutableStateOf<androidx.compose.ui.geometry.Size?>(null) }
+
+    // Get screen dimensions for proper scaling
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { size ->
+                // Capture actual preview size for coordinate scaling
+                previewSize = androidx.compose.ui.geometry.Size(
+                    width = size.width.toFloat(),
+                    height = size.height.toFloat()
+                )
+                println("Preview size captured: ${size.width}x${size.height}")
+            }
+    ) {
+        // Layer 1: Camera Preview with proper CameraX integration
         CameraPreview(
             modifier = Modifier.fillMaxSize(),
             cameraExecutor = cameraExecutor,
             onImageAnalysis = { imageProxy, bitmap ->
-                viewModel.processImageProxy(imageProxy, bitmap)
+                onImageAnalysis(imageProxy, bitmap)
             }
         )
 
-        // Layer 2: Face Bounding Box Overlay
+        // Layer 2: Face Bounding Box Overlay with proper coordinate scaling
         FaceBoundingBox(
             modifier = Modifier.fillMaxSize(),
             boundingBox = uiState.boundingBox,
-            livenessState = uiState.livenessState
+            livenessState = uiState.livenessState,
+            previewSize = previewSize, // Pass actual preview size
+            imageSize = uiState.imageSize // Pass image size from ViewModel
         )
 
-        // Layer 3: Top Info Section
+        // Layer 3: Top Info Section - More compact
         TopInfoSection(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 48.dp, start = 24.dp, end = 24.dp),
-            currentTime = currentTime,
-            currentAddress = currentAddress
+                .padding(top = 16.dp, start = 16.dp, end = 16.dp),
+            action = action
         )
 
-        // Layer 4: Instruction and Control Section
+        // Layer 4: Instruction Section with dynamic content
         InstructionSection(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 48.dp, start = 24.dp, end = 24.dp),
+                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
             uiState = uiState,
-            onRetryClick = {
-                viewModel.resetScanner()
-            },
-            onCloseClick = {
-                navController.popBackStack()
-            }
+            onRetryClick = onRetryClick,
+            onCloseClick = onCloseClick
         )
 
         // Layer 5: Loading Overlay for processing state
@@ -158,7 +250,7 @@ fun FaceScannerScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator()
+                        LoadingAnimation()
                         Text(
                             text = uiState.instructionText,
                             style = MaterialTheme.typography.bodyMedium,
@@ -179,32 +271,42 @@ private fun CameraPreview(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val previewView = remember { PreviewView(context) }
+    val previewView = remember {
+        PreviewView(context).apply {
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
+    }
 
-    AndroidView(
-        factory = { previewView },
-        modifier = modifier
-    ) { view ->
+    // Use LaunchedEffect instead of AndroidView update to prevent rebinding
+    LaunchedEffect(Unit) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-        cameraProviderFuture.addListener({
+
+        try {
             val cameraProvider = cameraProviderFuture.get()
 
+            // Unbind all use cases before rebinding
+            cameraProvider.unbindAll()
+
             // Preview use case
-            val preview = Preview.Builder().build().also {
-                it.surfaceProvider = view.surfaceProvider
-            }
+            val preview = CameraPreview.Builder()
+                .build()
+                .also {
+                    it.surfaceProvider = previewView.surfaceProvider
+                }
 
             // Image analysis use case
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
+                .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also { analysis ->
                     analysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                        // Convert ImageProxy to Bitmap for face detection
-                        val bitmap = imageProxyToBitmap(imageProxy)
-                        if (bitmap != null) {
-                            onImageAnalysis(imageProxy, bitmap)
-                        } else {
+                        try {
+                            val bitmap = imageProxyToBitmap(imageProxy)
+                            if (bitmap != null) {
+                                onImageAnalysis(imageProxy, bitmap)
+                            }
+                        } catch (e: Exception) {
+                            println("Error in image analysis: ${e.message}")
                             imageProxy.close()
                         }
                     }
@@ -213,56 +315,56 @@ private fun CameraPreview(
             // Select front camera
             val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
-            try {
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
+            // Bind use cases to camera (only once)
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                preview,
+                imageAnalysis
+            )
 
-                // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageAnalysis
-                )
-            } catch (exc: Exception) {
-                // Handle camera binding error
-            }
-        }, ContextCompat.getMainExecutor(context))
+            println("Camera bound successfully with preview and image analysis")
+
+        } catch (exc: Exception) {
+            println("Camera binding failed: ${exc.message}")
+            exc.printStackTrace()
+        }
     }
+
+    // Simple AndroidView without update block
+    AndroidView(
+        factory = { previewView },
+        modifier = modifier
+    )
 }
 
 @Composable
 private fun TopInfoSection(
     modifier: Modifier = Modifier,
-    currentTime: String,
-    currentAddress: String
+    action: String
 ) {
-    Card(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-        ),
-        shape = RoundedCornerShape(16.dp)
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Tittle(tittle = "Verifikasi Wajah")
-            Text(
-                text = currentTime,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = currentAddress,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center
-            )
-        }
+        Text(
+            text = "Verifikasi Wajah",
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = if (action == "checkin") "Check In" else "Check Out",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.9f),
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -276,14 +378,14 @@ private fun InstructionSection(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.50f)
         ),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Status Icon
             val icon = when (uiState.livenessState) {
@@ -309,14 +411,14 @@ private fun InstructionSection(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(36.dp),
                 tint = iconColor
             )
 
             // Instruction Text
             Text(
                 text = uiState.instructionText,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Medium
             )
@@ -325,13 +427,14 @@ private fun InstructionSection(
             if (uiState.showCountdown && uiState.livenessState != LivenessState.SUCCESS) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     LinearProgressIndicator(
                         progress = uiState.progress,
+                        color = Blue_500,
                         modifier = Modifier
                             .weight(1f)
-                            .height(4.dp)
+                            .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
                     )
                     Text(
@@ -346,7 +449,7 @@ private fun InstructionSection(
             uiState.errorMessage?.let { errorMessage ->
                 Text(
                     text = errorMessage,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFFFF3B30),
                     textAlign = TextAlign.Center
                 )
@@ -354,36 +457,230 @@ private fun InstructionSection(
 
             // Action Buttons
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Close Button
-                OutlinedButton(
+                // Close Button menggunakan StatefulButton dengan state Error
+                StatefulButton(
+                    text = "Tutup",
                     onClick = onCloseClick,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Tutup")
-                }
+                    modifier = Modifier.weight(1f),
+                    style = ButtonStyle.Outlined,
+                    stateType = ButtonStateType.Error,
+                    enabled = true
+                )
 
-                // Retry Button (show when failed or timeout)
+                // Retry Button (show when failed or timeout) menggunakan StatefulButton
                 if (uiState.livenessState == LivenessState.FAILURE ||
                     uiState.livenessState == LivenessState.TIMEOUT
                 ) {
-                    Button(
+                    StatefulButton(
+                        text = "Coba Lagi",
                         onClick = onRetryClick,
+                        modifier = Modifier.weight(1f),
+                        style = ButtonStyle.Elevated,
+                        stateType = ButtonStateType.Info,
+                        enabled = true
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Helper function to convert ImageProxy to Bitmap - FIXED VERSION
+private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
+    return try {
+        // DON'T close imageProxy here - let FaceDetectorHelper handle it
+        // Get the YUV_420_888 image from camera
+        val image = imageProxy.image
+        if (image != null) {
+            val planes = image.planes
+            val yBuffer = planes[0].buffer
+            val uBuffer = planes[1].buffer
+            val vBuffer = planes[2].buffer
+
+            val ySize = yBuffer.remaining()
+            val uSize = uBuffer.remaining()
+            val vSize = vBuffer.remaining()
+
+            val nv21 = ByteArray(ySize + uSize + vSize)
+
+            // U and V are swapped
+            yBuffer.get(nv21, 0, ySize)
+            vBuffer.get(nv21, ySize, vSize)
+            uBuffer.get(nv21, ySize + vSize, uSize)
+
+            val yuvImage = android.graphics.YuvImage(
+                nv21,
+                android.graphics.ImageFormat.NV21,
+                image.width,
+                image.height,
+                null
+            )
+
+            val out = java.io.ByteArrayOutputStream()
+            yuvImage.compressToJpeg(
+                android.graphics.Rect(0, 0, image.width, image.height),
+                75,
+                out
+            )
+
+            val imageBytes = out.toByteArray()
+            val bitmap =
+                android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+
+            // Close the output stream
+            out.close()
+
+            println("Successfully converted ImageProxy to Bitmap: ${bitmap?.width}x${bitmap?.height}")
+            bitmap
+        } else {
+            println("ImageProxy.image is null")
+            null
+        }
+    } catch (e: Exception) {
+        println("Error converting ImageProxy to Bitmap: ${e.message}")
+        e.printStackTrace()
+        null
+    }
+    // DON'T close imageProxy here - FaceDetectorHelper will close it
+}
+
+// Permission UI Components
+@Composable
+private fun CameraPermissionRationale(
+    onRequestPermission: () -> Unit,
+    onCloseClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Text(
+                    text = "Izin Kamera Diperlukan",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = "Aplikasi memerlukan akses kamera untuk melakukan verifikasi wajah. Fitur ini membantu memastikan keamanan absensi Anda.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = onCloseClick,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Batal")
+                    }
+
+                    Button(
+                        onClick = onRequestPermission,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Berikan Izin")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CameraPermissionDenied(
+    onRequestPermission: () -> Unit,
+    onCloseClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = Color(0xFFFF3B30)
+                )
+
+                Text(
+                    text = "Akses Kamera Dibutuhkan",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = "Tanpa akses kamera, fitur verifikasi wajah tidak dapat berfungsi. Silakan berikan izin kamera untuk melanjutkan proses absensi.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = onCloseClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Tutup")
+                    }
+
+                    Button(
+                        onClick = onRequestPermission,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Coba Lagi")
                     }
                 }
@@ -392,23 +689,168 @@ private fun InstructionSection(
     }
 }
 
-// Helper function to convert ImageProxy to Bitmap
-private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
-    return try {
-        val buffer = imageProxy.planes[0].buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
+// Preview Composables for different states
+@Preview(showBackground = true, name = "Check In - Initial State")
+@Composable
+fun PreviewFaceScannerCheckIn() {
+    MaterialTheme {
+        FaceScannerScreenPreview(
+            action = "checkin",
+            state = FaceScannerState(
+                livenessState = LivenessState.IDLE,
+                instructionText = "Posisikan wajah Anda dalam frame",
+                isProcessing = false,
+                showCountdown = false
+            )
+        )
+    }
+}
 
-        // For now, create a placeholder bitmap
-        // In production, you'd implement proper YUV to RGB conversion
-        val width = imageProxy.width
-        val height = imageProxy.height
+@Preview(showBackground = true, name = "Check Out - Waiting for Liveness")
+@Composable
+fun PreviewFaceScannerCheckOutWaiting() {
+    MaterialTheme {
+        FaceScannerScreenPreview(
+            action = "checkout",
+            state = FaceScannerState(
+                livenessState = LivenessState.WAITING_FOR_LIVENESS,
+                currentChallenge = LivenessChallenge.BLINK,
+                instructionText = "Silakan berkedip untuk verifikasi",
+                isProcessing = false,
+                showCountdown = true,
+                progress = 0.6f,
+                timeRemaining = 4
+            )
+        )
+    }
+}
 
-        // Create a simple bitmap (placeholder implementation)
-        createBitmap(width, height).apply {
-            eraseColor(Color.Black.toArgb())
+@Preview(showBackground = true, name = "Processing State")
+@Composable
+fun PreviewFaceScannerProcessing() {
+    MaterialTheme {
+        FaceScannerScreenPreview(
+            action = "checkin",
+            state = FaceScannerState(
+                livenessState = LivenessState.VERIFYING_FACE,
+                instructionText = "Memproses verifikasi wajah...",
+                isProcessing = true,
+                showCountdown = false
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Success State")
+@Composable
+fun PreviewFaceScannerSuccess() {
+    MaterialTheme {
+        FaceScannerScreenPreview(
+            action = "checkin",
+            state = FaceScannerState(
+                livenessState = LivenessState.SUCCESS,
+                instructionText = "Verifikasi berhasil!",
+                isProcessing = false,
+                showCountdown = false
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Failure State")
+@Composable
+fun PreviewFaceScannerFailure() {
+    MaterialTheme {
+        FaceScannerScreenPreview(
+            action = "checkout",
+            state = FaceScannerState(
+                livenessState = LivenessState.FAILURE,
+                instructionText = "Verifikasi gagal",
+                errorMessage = "Wajah tidak terdeteksi dengan jelas. Silakan coba lagi.",
+                isProcessing = false,
+                showCountdown = false
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Timeout State")
+@Composable
+fun PreviewFaceScannerTimeout() {
+    MaterialTheme {
+        FaceScannerScreenPreview(
+            action = "checkin",
+            state = FaceScannerState(
+                livenessState = LivenessState.TIMEOUT,
+                instructionText = "Waktu habis",
+                errorMessage = "Waktu verifikasi telah habis. Silakan coba lagi.",
+                isProcessing = false,
+                showCountdown = false
+            )
+        )
+    }
+}
+
+// Simplified preview composable without camera and ViewModel dependencies
+@Composable
+private fun FaceScannerScreenPreview(
+    action: String,
+    state: FaceScannerState
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Mock camera background
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        )
+
+        // Top Info Section
+        TopInfoSection(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 48.dp, start = 24.dp, end = 24.dp),
+            action = action
+        )
+
+        // Instruction Section
+        InstructionSection(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp, start = 24.dp, end = 24.dp),
+            uiState = state,
+            onRetryClick = {},
+            onCloseClick = {}
+        )
+
+        // Loading Overlay for processing state
+        if (state.isProcessing) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier.padding(32.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = state.instructionText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
-    } catch (e: Exception) {
-        null
     }
 }

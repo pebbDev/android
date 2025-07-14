@@ -18,21 +18,21 @@ interface AttendanceRepository {
 
     /**
      * Performs check-in operation
-     * @param currentUserLocation The current location of the user (Android Location for GPS data)
-     * @param targetLocation The target location for attendance (Domain model)
      * @param request The attendance request containing necessary data for check-in
      */
-    suspend fun checkIn(
-        currentUserLocation: android.location.Location,
-        targetLocation: com.example.infinite_track.domain.model.attendance.Location,
-        request: AttendanceRequestModel
-    ): Result<ActiveAttendanceSession>
+    suspend fun checkIn(request: AttendanceRequestModel): Result<ActiveAttendanceSession>
 
     /**
      * Performs check-out operation for the active attendance session
-     * @param locationId The ID of the location to remove geofence for
+     * @param attendanceId The ID of the active attendance session
+     * @param latitude Current user latitude
+     * @param longitude Current user longitude
      */
-    suspend fun checkOut(locationId: Int): Result<ActiveAttendanceSession>
+    suspend fun checkOut(
+        attendanceId: Int,
+        latitude: Double,
+        longitude: Double
+    ): Result<ActiveAttendanceSession>
 
     /**
      * Retrieves the active attendance ID from preferences

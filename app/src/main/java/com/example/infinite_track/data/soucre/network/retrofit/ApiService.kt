@@ -1,10 +1,11 @@
 package com.example.infinite_track.data.soucre.network.retrofit
 
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
+import com.example.infinite_track.data.soucre.network.request.BookingRequest
+import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
-import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
@@ -40,7 +41,8 @@ interface ApiService {
 
     @POST("api/attendance/checkout/{id_attendance}")
     suspend fun checkOut(
-        @Path("id_attendance") attendanceId: Int
+        @Path("id_attendance") attendanceId: Int,
+        @Body request: CheckOutRequestDto
     ): AttendanceResponse
 
     @GET("api/attendance/status-today")

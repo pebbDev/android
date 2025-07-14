@@ -4,10 +4,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
+import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
@@ -58,7 +61,11 @@ data class AttendanceScreenState(
     // Pick on Map properties
     val pickedLocation: LocationResult? = null, // Location picked by user on map
     val isPickOnMapModeActive: Boolean = false, // Flag for Pick on Map mode
-    val error: String? = null // Error message for network failures
+    val error: String? = null, // Error message for network failures
+    // Attendance button state
+    val buttonText: String = "Loading...",
+    val isButtonEnabled: Boolean = false,
+    val isCheckInMode: Boolean = true // Track whether we're in check-in or check-out mode
 )
 
 /**
@@ -75,7 +82,10 @@ class AttendanceViewModel @Inject constructor(
     private val reverseGeocodeUseCase: ReverseGeocodeUseCase,
     private val attendancePreference: AttendancePreference,
     private val geofenceManager: GeofenceManager,
-    private val getLoggedInUserUseCase: GetLoggedInUserUseCase
+    private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
+    // Add UseCase dependencies for attendance operations
+    private val checkInUseCase: CheckInUseCase,
+    private val checkOutUseCase: CheckOutUseCase
 ) : ViewModel() {
 
     /**
@@ -86,32 +96,13 @@ class AttendanceViewModel @Inject constructor(
         data class AnimateToFitBounds(val points: List<Point>) : MapEvent()
         object ShowLocationError : MapEvent()
         data class NavigateToWfaBooking(val route: String) : MapEvent()
+        data class NavigateToFaceScanner(val isCheckIn: Boolean) : MapEvent()
     }
 
     // Main UI state
     private val _uiState = MutableStateFlow(AttendanceScreenState())
     val uiState: StateFlow<AttendanceScreenState> = _uiState.asStateFlow()
 
-    // Reactive geofence status from DataStore (single source of truth for validation)
-    val isUserInsideGeofence: StateFlow<Boolean> = attendancePreference
-        .isUserInsideGeofence()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
-        )
-
-    // Reactive check-in eligibility combining today status and geofence status
-    val isCheckInEnabled: StateFlow<Boolean> = combine(
-        _uiState,
-        isUserInsideGeofence
-    ) { state, isInside ->
-        state.todayStatus?.canCheckIn == true && isInside
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = false
-    )
 
     // Channel for one-time events to UI
     private val _mapEvent = Channel<MapEvent>()
@@ -154,6 +145,7 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Fetch today status to get WFO location
+     * FIXED: Now uses isButtonEnabled from calculateDynamicButtonState directly
      */
     private suspend fun fetchTodayStatus() {
         try {
@@ -163,6 +155,9 @@ class AttendanceViewModel @Inject constructor(
                 val isBookingEnabled = todayStatus.activeMode.isNotEmpty()
                 val selectedMode = todayStatus.activeMode.ifEmpty { "Work From Office" }
 
+                // Calculate button state based on today's status
+                val (buttonText, isButtonEnabled, isCheckInMode) = calculateDynamicButtonState(todayStatus)
+
                 _uiState.value = _uiState.value.copy(
                     todayStatus = todayStatus,
                     targetLocation = todayStatus.activeLocation,
@@ -170,6 +165,10 @@ class AttendanceViewModel @Inject constructor(
                     targetLocationMarker = todayStatus.activeLocation,
                     isBookingEnabled = isBookingEnabled,
                     selectedWorkMode = selectedMode,
+                    // FIXED: Now uses isButtonEnabled from calculateDynamicButtonState
+                    buttonText = buttonText,
+                    isButtonEnabled = isButtonEnabled,
+                    isCheckInMode = isCheckInMode,
                     uiState = UiState.Success(Unit)
                 )
 
@@ -188,18 +187,50 @@ class AttendanceViewModel @Inject constructor(
                 }
 
                 Log.d(TAG, "WFO location updated: ${todayStatus.activeLocation}")
+                Log.d(TAG, "Button state updated: $buttonText, enabled: $isButtonEnabled, mode: $isCheckInMode")
 
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to fetch today status", exception)
                 _uiState.value = _uiState.value.copy(
-                    uiState = UiState.Error("Failed to load attendance status: ${exception.message}")
+                    uiState = UiState.Error("Failed to load attendance status: ${exception.message}"),
+                    buttonText = "Error",
+                    isButtonEnabled = false
                 )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in fetchTodayStatus", e)
             _uiState.value = _uiState.value.copy(
-                uiState = UiState.Error("Unexpected error: ${e.message}")
+                uiState = UiState.Error("Unexpected error: ${e.message}"),
+                buttonText = "Error",
+                isButtonEnabled = false
             )
+        }
+    }
+
+    /**
+     * Calculate dynamic button state based on today's status
+     * Returns Triple(buttonText, isEnabled, isCheckInMode)
+     * FIXED: Tombol selalu aktif kecuali sudah selesai absensi - validasi lokasi diserahkan ke backend
+     */
+    private fun calculateDynamicButtonState(todayStatus: TodayStatus): Triple<String, Boolean, Boolean> {
+        return when {
+            // PRIORITAS 1: Belum check-in sama sekali (checked_in_at == null)
+            // Selalu aktif - biarkan backend yang validasi lokasi
+            todayStatus.checkedInAt == null -> {
+                Triple("Check-in di sini", true, true)
+            }
+
+            // PRIORITAS 2: Sudah check-in, bisa check-out (checked_in_at != null && can_check_out == true)
+            // Selalu aktif - biarkan backend yang validasi lokasi
+            todayStatus.checkedInAt != null && todayStatus.canCheckOut -> {
+                Triple("Check-out di sini", true, false)
+            }
+
+            // PRIORITAS 3: Sudah selesai absensi hari ini
+            // Hanya kondisi ini yang tombolnya nonaktif
+            else -> {
+                Triple("Anda sudah absen hari ini", false, false)
+            }
         }
     }
 
@@ -239,18 +270,26 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Setup geofence for validation (background monitoring)
+     * UPDATED: Improved integration with new GeofenceManager clean slate approach
      */
     private fun setupGeofence(location: Location) {
         try {
+            Log.d(TAG, "Setting up geofence for location: ${location.description}")
+            Log.d(
+                TAG,
+                "Location details - ID: ${location.locationId}, Lat: ${location.latitude}, Lng: ${location.longitude}, Radius: ${location.radius}m"
+            )
+
             geofenceManager.addGeofence(
                 id = location.locationId.toString(),
                 latitude = location.latitude,
                 longitude = location.longitude,
                 radius = location.radius.toFloat()
             )
-            Log.d(TAG, "Geofence setup for location: ${location.description}")
+
+            Log.d(TAG, "Geofence setup request sent for location: ${location.description}")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to setup geofence", e)
+            Log.e(TAG, "Failed to setup geofence for location: ${location.description}", e)
         }
     }
 
@@ -308,9 +347,15 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Handle work mode selection with Pick on Map integration
+     * UPDATED: Added geofence cleanup when switching modes
      */
     fun onWorkModeSelected(mode: String) {
         Log.d(TAG, "Work mode selected: $mode")
+
+        // Clean up any existing geofence before switching modes
+        Log.d(TAG, "Cleaning up geofences before mode switch...")
+        geofenceManager.removeAllGeofences()
+
         _uiState.value = _uiState.value.copy(
             selectedWorkMode = mode,
             isWfaModeActive = mode == "WFA" || mode == "Work From Anywhere"
@@ -331,6 +376,9 @@ class AttendanceViewModel @Inject constructor(
                 "Work From Home", "WFH" -> {
                     onExitPickOnMapMode()
                     _uiState.value.wfhLocation?.let { wfhLocation ->
+                        // Setup geofence for WFH location
+                        setupGeofence(wfhLocation)
+
                         val wfhPoint = Point.fromLngLat(wfhLocation.longitude, wfhLocation.latitude)
                         _mapEvent.send(
                             MapEvent.AnimateToLocation(
@@ -338,13 +386,16 @@ class AttendanceViewModel @Inject constructor(
                                 zoomLevel = 15.0
                             )
                         )
-                        Log.d(TAG, "Auto-focusing camera to WFH location")
+                        Log.d(TAG, "Auto-focusing camera to WFH location and setting up geofence")
                     }
                 }
 
                 "Work From Office", "WFO" -> {
                     onExitPickOnMapMode()
                     _uiState.value.wfoLocation?.let { wfoLocation ->
+                        // Setup geofence for WFO location
+                        setupGeofence(wfoLocation)
+
                         val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
                         _mapEvent.send(
                             MapEvent.AnimateToLocation(
@@ -352,7 +403,7 @@ class AttendanceViewModel @Inject constructor(
                                 zoomLevel = 15.0
                             )
                         )
-                        Log.d(TAG, "Auto-focusing camera to WFO location")
+                        Log.d(TAG, "Auto-focusing camera to WFO location and setting up geofence")
                     }
                 }
             }
@@ -506,20 +557,207 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Handle check-in button click
+     * Handle attendance button click - navigates to face scanner
+     * FIXED: Uses new Screen.FaceScanner.createRoute with action parameter
      */
-    fun onCheckInClicked() {
-        viewModelScope.launch {
-            val canCheckIn = isCheckInEnabled.value
-            Log.d(TAG, "Check-in clicked. Enabled: $canCheckIn")
+    fun onAttendanceButtonClicked() {
+        // Use the reactive StateFlow value instead of recalculating
+        val isEnabled = _uiState.value.isButtonEnabled
+        val buttonText = _uiState.value.buttonText
 
-            if (canCheckIn) {
-                // TODO: Implement check-in logic
-                Log.d(TAG, "Proceeding with check-in...")
-            } else {
-                Log.d(TAG, "Check-in not allowed - user outside geofence or can't check in")
+        if (!isEnabled) {
+            Log.d(TAG, "Attendance button clicked but not enabled (geofence or server restriction)")
+            return
+        }
+
+        val isCheckIn = buttonText.contains("Check-in", ignoreCase = true)
+        val action = if (isCheckIn) "checkin" else "checkout"
+
+        Log.d(TAG, "Attendance button clicked - $action")
+
+        // Update isCheckInMode state before navigation
+        _uiState.value = _uiState.value.copy(isCheckInMode = isCheckIn)
+
+        viewModelScope.launch {
+            _mapEvent.send(MapEvent.NavigateToFaceScanner(isCheckIn))
+        }
+    }
+
+    /**
+     * Calculate button state based on today's status
+     * FIXED: Updated logic following the same pattern as calculateDynamicButtonState
+     */
+    fun calculateButtonState(): Pair<String, Boolean> {
+        val todayStatus = _uiState.value.todayStatus
+        return when {
+            todayStatus == null -> "Loading..." to false
+
+            // PRIORITAS 1: Belum check-in sama sekali (checked_in_at == null)
+            // Selalu tampilkan "Check-in di sini", status enabled berdasarkan can_check_in
+            todayStatus.checkedInAt == null -> "Check-in di sini" to todayStatus.canCheckIn
+
+            // PRIORITAS 2: Sudah check-in, bisa check-out (checked_in_at != null && can_check_out == true)
+            // Tampilkan "Check-out di sini", selalu enabled jika bisa check-out
+            todayStatus.checkedInAt != null && todayStatus.canCheckOut -> {
+                "Check-out di sini" to true
+            }
+
+            // PRIORITAS 3: Sudah check-in, tidak bisa check-out (sudah selesai absensi hari ini)
+            todayStatus.checkedInAt != null && !todayStatus.canCheckOut -> {
+                "Anda sudah absen hari ini" to false
+            }
+
+            // FALLBACK: Kondisi tidak normal (seharusnya tidak pernah tercapai)
+            else -> "Check-in di sini" to false
+        }
+    }
+
+    /**
+     * Handle face verification result - GATEWAY after face verification
+     * Called from FaceScannerScreen when verification is complete
+     */
+    fun onFaceVerificationResult(isSuccess: Boolean) {
+        Log.d(TAG, "Face verification result: $isSuccess")
+
+        if (!isSuccess) {
+            Log.d(TAG, "Face verification failed - aborting attendance process")
+            _uiState.value = _uiState.value.copy(
+                error = "Verifikasi wajah gagal. Silakan coba lagi."
+            )
+            return
+        }
+
+        // Check current mode and proceed accordingly
+        if (_uiState.value.isCheckInMode) {
+            proceedWithCheckIn()
+        } else {
+            proceedWithCheckOut()
+        }
+    }
+
+    /**
+     * Proceed with check-in after successful face verification
+     * FIXED: Added proper targetLocation determination logic
+     */
+    private fun proceedWithCheckIn() {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Proceeding with check-in after face verification")
+
+                // Clear any previous error
+                _uiState.value = _uiState.value.copy(error = null)
+
+                // FIXED: Determine target location based on selected work mode
+                val targetLocation = when (_uiState.value.selectedWorkMode) {
+                    "Work From Home", "WFH" -> _uiState.value.wfhLocation
+                    "Work From Office", "WFO" -> _uiState.value.wfoLocation
+                    "WFA", "Work From Anywhere" -> {
+                        // For WFA, convert selectedWfaLocation to Location object
+                        _uiState.value.selectedWfaLocation?.let { wfaLocation ->
+                            Location(
+                                locationId = 0, // WFA locations don't have fixed IDs
+                                latitude = wfaLocation.latitude,
+                                longitude = wfaLocation.longitude,
+                                radius = 100, // Default radius for WFA
+                                description = wfaLocation.name,
+                                category = wfaLocation.category
+                            )
+                        }
+                    }
+
+                    else -> _uiState.value.wfoLocation // Default to WFO
+                }
+
+                if (targetLocation == null) {
+                    _uiState.value = _uiState.value.copy(
+                        error = "Target location not available for ${_uiState.value.selectedWorkMode}. Please try again."
+                    )
+                    return@launch
+                }
+
+                // Get user info for the request
+                getLoggedInUserUseCase().collect { user ->
+                    if (user == null) {
+                        _uiState.value = _uiState.value.copy(
+                            error = "User information not available. Please try again."
+                        )
+                        return@collect
+                    }
+
+                    // Create attendance request model with proper parameters
+                    val attendanceRequest = AttendanceRequestModel(
+                        categoryId = targetLocation.locationId, // Use target location's ID as category
+                        latitude = 0.0, // Will be updated by UseCase with real-time GPS
+                        longitude = 0.0, // Will be updated by UseCase with real-time GPS
+                        notes = "Check-in via mobile app",
+                        bookingId = null, // No booking for regular check-in
+                        type = "checkin"
+                    )
+
+                    // FIXED: Call CheckInUseCase with both request and target location
+                    checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
+                        Log.d(TAG, "Check-in successful: $activeSession")
+
+                        // Refresh today's status to get updated data
+                        fetchTodayStatus()
+
+                    }.onFailure { exception ->
+                        Log.e(TAG, "Check-in failed", exception)
+                        _uiState.value = _uiState.value.copy(
+                            error = exception.message ?: "Check-in failed. Please try again."
+                        )
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in proceedWithCheckIn", e)
+                _uiState.value = _uiState.value.copy(
+                    error = "Unexpected error during check-in: ${e.message}"
+                )
             }
         }
+    }
+
+    /**
+     * Proceed with check-out after successful face verification
+     * PRIVATE - only called from onFaceVerificationResult
+     */
+    private fun proceedWithCheckOut() {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Proceeding with check-out after face verification")
+
+                // Clear any previous error
+                _uiState.value = _uiState.value.copy(error = null)
+
+                // Call CheckOutUseCase - it will handle everything internally
+                checkOutUseCase().onSuccess { activeSession ->
+                    Log.d(TAG, "Check-out successful: $activeSession")
+
+                    // Refresh today's status to get updated data
+                    fetchTodayStatus()
+
+                }.onFailure { exception ->
+                    Log.e(TAG, "Check-out failed", exception)
+                    _uiState.value = _uiState.value.copy(
+                        error = exception.message ?: "Check-out failed. Please try again."
+                    )
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in proceedWithCheckOut", e)
+                _uiState.value = _uiState.value.copy(
+                    error = "Unexpected error during check-out: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Clear error message
+     */
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 
     /**

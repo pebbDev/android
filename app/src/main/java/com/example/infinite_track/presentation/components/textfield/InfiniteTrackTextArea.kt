@@ -13,9 +13,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.theme.Purple_400
-import com.example.infinite_track.presentation.theme.Violet_50
-import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,6 +23,7 @@ fun InfiniteTrackTextArea(
     modifier: Modifier = Modifier,
     label: String = "Description",
     value: String = "",
+    placeholder: String = "",
     enabled: Boolean = true,
     onValueChange: (String) -> Unit = {}
 ) {
@@ -31,12 +32,22 @@ fun InfiniteTrackTextArea(
     ) {
         Text(
             text = label,
-            color = Purple_400,
+            style = body1,
+            color = Purple_700,
             modifier = Modifier.padding(bottom = 4.dp)
         )
         TextField(
-            value = value, // Langsung menggunakan String, bukan TextFieldValue
-            onValueChange = onValueChange, // Langsung meneruskan callback
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = if (placeholder.isNotEmpty()) {
+                {
+                    Text(
+                        text = placeholder,
+                        style = body2,
+                        color = Purple_400
+                    )
+                }
+            } else null,
             modifier = Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 120.dp)
@@ -48,27 +59,44 @@ fun InfiniteTrackTextArea(
             shape = RoundedCornerShape(15.dp),
             enabled = enabled,
             singleLine = false,
+            textStyle = body2,
             colors = TextFieldDefaults.textFieldColors(
                 containerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent,
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black,
-                cursorColor = Color.Black
+                focusedTextColor = Text,
+                unfocusedTextColor = Text,
+                disabledTextColor = Purple_400
             )
         )
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF000000, widthDp = 320)
+@Preview(showBackground = true)
 @Composable
-fun InfiniteTrackTextAreaPreview() {
+private fun InfiniteTrackTextAreaPreview() {
     Infinite_TrackTheme {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Text Area Examples",
+                style = body1,
+                color = Purple_700
+            )
+
             InfiniteTrackTextArea(
-                label = "Leave a Note",
-                value = "This is a sample text that shows how the text area will look and behave when filled with content."
+                label = "Description",
+                value = "",
+                placeholder = "Enter your description here...",
+                onValueChange = {}
+            )
+
+            InfiniteTrackTextArea(
+                label = "Notes",
+                value = "Sample text content",
             )
         }
     }

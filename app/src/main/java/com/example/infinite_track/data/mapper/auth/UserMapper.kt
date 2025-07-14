@@ -21,11 +21,11 @@ fun UserData.toDomain(): UserModel {
         phone = this.phone,
         photoUrl = this.photo,
         photoUpdatedAt = this.photoUpdatedAt,
-        latitude = this.location?.latitude,
-        longitude = this.location?.longitude,
-        radius = this.location?.radius,
-        locationDescription = this.location?.description,
-        locationCategoryName = this.location?.categoryName,
+        latitude = this.location.latitude,
+        longitude = this.location.longitude,
+        radius = this.location.radius,
+        locationDescription = this.location.description,
+        locationCategoryName = this.location.categoryName,
         // Face embedding is null from API
         faceEmbedding = null
     )
