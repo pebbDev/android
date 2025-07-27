@@ -246,6 +246,10 @@ class FaceScannerViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                // DEBUG: Log bitmap info sebelum ekstraksi
+                println("DEBUG: Original bitmap size: ${bitmap.width}x${bitmap.height}")
+                println("DEBUG: Face bounding box: ${face.boundingBox}")
+
                 // Ekstrak bitmap wajah dari gambar penuh
                 val faceBitmap = faceDetectorHelper.extractFaceBitmap(face, bitmap)
 
@@ -254,9 +258,14 @@ class FaceScannerViewModel @Inject constructor(
                     return@launch
                 }
 
+                // DEBUG: Log face bitmap info setelah ekstraksi
+                println("DEBUG: Extracted face bitmap size: ${faceBitmap.width}x${faceBitmap.height}")
+
                 // Verifikasi wajah menggunakan VerifyFaceUseCase
+                println("DEBUG: Starting face verification...")
                 verifyFaceUseCase(faceBitmap)
                     .onSuccess { isMatch ->
+                        println("DEBUG: Face verification completed. Match: $isMatch")
                         if (isMatch) {
                             handleVerificationSuccess()
                         } else {
@@ -264,12 +273,14 @@ class FaceScannerViewModel @Inject constructor(
                         }
                     }
                     .onFailure { exception ->
+                        println("DEBUG: Face verification failed with exception: ${exception.message}")
                         handleVerificationError(
                             exception.message ?: "Gagal memverifikasi wajah. Silakan coba lagi."
                         )
                     }
 
             } catch (e: Exception) {
+                println("DEBUG: Exception in proceedWithFaceVerification: ${e.message}")
                 handleVerificationError("Terjadi kesalahan: ${e.message}")
             }
         }

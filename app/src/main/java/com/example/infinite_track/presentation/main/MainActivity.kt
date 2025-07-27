@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.screen.splash.SplashNavigationState
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
@@ -24,6 +25,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appNavigator: AppNavigator
 
+    // Inject SessionManager untuk menangani session expiration
+    @Inject
+    lateinit var sessionManager: SessionManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen BEFORE super.onCreate()
         val splashScreen = installSplashScreen()
@@ -37,7 +42,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Infinite_TrackTheme {
-                InfiniteTrackApp(appNavigator = appNavigator)
+                InfiniteTrackApp(
+                    appNavigator = appNavigator,
+                    sessionManager = sessionManager
+                )
             }
         }
 

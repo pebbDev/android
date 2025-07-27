@@ -28,6 +28,13 @@ class AppNavigator @Inject constructor() {
     fun navigateToScreen(route: String) {
         _navigationEvents.tryEmit(NavigationEvent.NavigateToScreen(route))
     }
+
+    /**
+     * Navigasi ke login setelah sesi berakhir (401 error)
+     */
+    fun navigateToLoginAfterSessionExpired() {
+        _navigationEvents.tryEmit(NavigationEvent.NavigateToLoginAfterSessionExpired)
+    }
 }
 
 /**
@@ -36,4 +43,5 @@ class AppNavigator @Inject constructor() {
 sealed class NavigationEvent {
     object NavigateToAttendance : NavigationEvent()
     data class NavigateToScreen(val route: String) : NavigationEvent()
+    object NavigateToLoginAfterSessionExpired : NavigationEvent()
 }

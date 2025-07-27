@@ -115,29 +115,74 @@ class FaceDetectorHelper @Inject constructor() {
     }
 
     /**
-     * Extracts face region from the full image bitmap
-     * @param face Detected face with bounding box information
-     * @param image Full image bitmap
-     * @return Cropped face bitmap or null if extraction fails
+     * Extracts and preprocesses face bitmap for consistent embedding generation
+     * @param face Detected face from ML Kit
+     * @param image Source bitmap from camera
+     * @return Preprocessed face bitmap or null if extraction fails
      */
     fun extractFaceBitmap(face: Face, image: Bitmap): Bitmap? {
         return try {
             val boundingBox = face.boundingBox
 
-            // Ensure bounding box is within image bounds
-            val left = maxOf(0, boundingBox.left)
-            val top = maxOf(0, boundingBox.top)
-            val right = minOf(image.width, boundingBox.right)
-            val bottom = minOf(image.height, boundingBox.bottom)
+            // DEBUG: Log original face detection info
+            println("DEBUG FaceDetectorHelper: Original bounding box: $boundingBox")
+            println("DEBUG FaceDetectorHelper: Source image size: ${image.width}x${image.height}")
+
+            // Add padding around the face for better context (10% on each side)
+            val padding = (boundingBox.width() * 0.1f).toInt()
+
+            // Calculate expanded bounding box with padding
+            val left = maxOf(0, boundingBox.left - padding)
+            val top = maxOf(0, boundingBox.top - padding)
+            val right = minOf(image.width, boundingBox.right + padding)
+            val bottom = minOf(image.height, boundingBox.bottom + padding)
+
+            println("DEBUG FaceDetectorHelper: Padded coordinates - left:$left, top:$top, right:$right, bottom:$bottom")
+            println("DEBUG FaceDetectorHelper: Crop dimensions: ${right - left}x${bottom - top}")
 
             // Validate that we have a valid crop area
             if (left < right && top < bottom) {
-                Bitmap.createBitmap(image, left, top, right - left, bottom - top)
+                // Extract face with padding
+                val croppedBitmap =
+                    Bitmap.createBitmap(image, left, top, right - left, bottom - top)
+                println("DEBUG FaceDetectorHelper: Cropped bitmap size: ${croppedBitmap.width}x${croppedBitmap.height}")
+
+                // KUNCI PERBAIKAN: Standardisasi ukuran dan format
+                val standardizedBitmap = standardizeFaceBitmap(croppedBitmap)
+                println("DEBUG FaceDetectorHelper: Standardized bitmap size: ${standardizedBitmap.width}x${standardizedBitmap.height}")
+
+                // Clean up intermediate bitmap
+                if (croppedBitmap != standardizedBitmap) {
+                    croppedBitmap.recycle()
+                }
+
+                standardizedBitmap
             } else {
+                println("DEBUG FaceDetectorHelper: Invalid crop area - left:$left >= right:$right or top:$top >= bottom:$bottom")
                 null
             }
         } catch (e: Exception) {
+            println("DEBUG FaceDetectorHelper: Error extracting face bitmap: ${e.message}")
+            e.printStackTrace()
             null
+        }
+    }
+
+    /**
+     * Standardizes face bitmap to consistent size and format
+     * This ensures consistent preprocessing for both profile and camera images
+     */
+    private fun standardizeFaceBitmap(faceBitmap: Bitmap): Bitmap {
+        // PERBAIKAN: Gunakan ukuran yang sama dengan FaceProcessor (112x112)
+        val standardWidth = 112  // Sama dengan IMAGE_SIZE di FaceProcessor
+        val standardHeight = 112  // Sama dengan IMAGE_SIZE di FaceProcessor
+
+        return try {
+            // Resize to standard dimensions with high quality
+            Bitmap.createScaledBitmap(faceBitmap, standardWidth, standardHeight, true)
+        } catch (e: Exception) {
+            println("Error standardizing face bitmap: ${e.message}")
+            faceBitmap // Return original if standardization fails
         }
     }
 

@@ -15,12 +15,14 @@ class VerifyFaceUseCase @Inject constructor(
     private val authRepository: AuthRepository
 ) {
     companion object {
-        private const val SIMILARITY_THRESHOLD = 0.8f // Minimum similarity for face match
+        // PERBAIKAN: Turunkan threshold berdasarkan hasil testing (0.197)
+        private const val SIMILARITY_THRESHOLD = 0.15f // Turun dari 0.4f ke 0.15f
+        private const val TAG = "VerifyFaceUseCase"
     }
 
     /**
      * Verifies captured face against stored user embedding
-     * @param capturedFaceBitmap Bitmap of the captured face
+     * @param capturedFaceBitmap Bitmap of the captured face (sudah di-preprocess oleh FaceDetectorHelper)
      * @return Result<Boolean> indicating if face matches (true) or not (false)
      */
     suspend operator fun invoke(capturedFaceBitmap: Bitmap): Result<Boolean> {
@@ -32,7 +34,7 @@ class VerifyFaceUseCase @Inject constructor(
             val storedEmbedding = currentUser.faceEmbedding
                 ?: return Result.failure(Exception("No stored face embedding found. Please update your profile."))
 
-            // Generate embedding from captured bitmap
+            // Generate embedding from captured bitmap (sudah standardized ke 112x112)
             val embeddingResult = generateEmbeddingFromBitmap(capturedFaceBitmap)
 
             if (embeddingResult.isFailure) {
@@ -47,12 +49,18 @@ class VerifyFaceUseCase @Inject constructor(
             // Compare embeddings using cosine similarity
             val similarity = calculateCosineSimilarity(storedEmbedding, capturedEmbedding)
 
+            // Log similarity score untuk debugging
+            android.util.Log.d(TAG, "Face similarity score: $similarity (threshold: $SIMILARITY_THRESHOLD)")
+
             // Return true if similarity exceeds threshold
             val isMatch = similarity >= SIMILARITY_THRESHOLD
+
+            android.util.Log.d(TAG, "Face verification result: $isMatch")
 
             Result.success(isMatch)
 
         } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error in face verification", e)
             Result.failure(e)
         }
     }

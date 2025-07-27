@@ -9,11 +9,11 @@ import com.example.infinite_track.data.soucre.network.request.LocationEventReque
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-
 /**
  * Worker for sending location events to backend
  * This worker handles the background task of sending geofence events (ENTER/EXIT) to the server
  */
+
 @HiltWorker
 class LocationEventWorker @AssistedInject constructor(
     @Assisted context: Context,

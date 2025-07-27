@@ -14,27 +14,59 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.components.base.BaseLayout
 import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.navigation.NavigationEvent
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.navigation.appNavGraph
+import com.example.infinite_track.utils.DialogHelper
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun InfiniteTrackApp(
     modifier: Modifier = Modifier,
-    appNavigator: AppNavigator? = null
+    appNavigator: AppNavigator? = null,
+    sessionManager: SessionManager? = null
 ) {
     // Root level NavController - handles top-level navigation
     val navController = rememberNavController()
+    val context = LocalContext.current
+
+    // Observe session expiration state
+    val sessionExpired by sessionManager?.sessionExpired?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    // Handle session expiration
+    LaunchedEffect(sessionExpired) {
+        if (sessionExpired) {
+            // Show session expired dialog
+            DialogHelper.showDialogError(
+                context = context,
+                title = "Sesi Berakhir",
+                textContent = "Sesi Anda telah berakhir. Silakan login kembali untuk melanjutkan.",
+                onConfirm = {
+                    // Reset session expired state
+                    sessionManager?.resetSessionExpired()
+
+                    // Navigate to login and clear back stack
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+    }
 
     // Handle navigation events from AppNavigator
     LaunchedEffect(appNavigator) {
@@ -50,6 +82,15 @@ fun InfiniteTrackApp(
 
                 is NavigationEvent.NavigateToScreen -> {
                     navController.navigate(event.route) {
+                        launchSingleTop = true
+                    }
+                }
+
+                is NavigationEvent.NavigateToLoginAfterSessionExpired -> {
+                    // This event is now handled by SessionManager state above
+                    // Keeping for backward compatibility if needed elsewhere
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
                 }

@@ -4,13 +4,18 @@ import android.os.Build
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
+import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -19,6 +24,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
+import javax.inject.Provider
 import javax.inject.Singleton
 
 @Module
@@ -32,10 +38,14 @@ object NetworkModule {
         return HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
     }
 
-    // 2. Menyediakan Interceptor untuk Otentikasi
+    // 2. Menyediakan Interceptor untuk Otentikasi dengan Auto Logout
     @Provides
     @Singleton
-    fun provideAuthInterceptor(userPreference: UserPreference): Interceptor {
+    fun provideAuthInterceptor(
+        userPreference: UserPreference,
+        logoutUseCaseProvider: Provider<LogoutUseCase>,
+        sessionManagerProvider: Provider<SessionManager>
+    ): Interceptor {
         return Interceptor { chain ->
             // Mengambil token secara sinkron dari DataStore
             val token = runBlocking { userPreference.getAuthToken().first() }
@@ -45,7 +55,41 @@ object NetworkModule {
                 requestBuilder.addHeader("Authorization", "Bearer $token")
             }
 
-            chain.proceed(requestBuilder.build())
+            val response = chain.proceed(requestBuilder.build())
+
+            // Check for 401 Unauthorized response
+            if (response.code == 401) {
+                // PERBAIKAN: Tambahkan pengecualian untuk endpoint logout
+                val requestUrl = chain.request().url.toString()
+                val isLogoutRequest =
+                    requestUrl.contains("/auth/logout") || requestUrl.endsWith("/logout")
+
+                // Hanya trigger auto-logout jika bukan dari endpoint logout itu sendiri
+                if (!isLogoutRequest) {
+                    // Launch coroutine to handle logout in background
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            // Clear session data
+                            logoutUseCaseProvider.get().invoke()
+
+                            // Trigger session expiration notification
+                            sessionManagerProvider.get().triggerSessionExpired()
+                        } catch (e: Exception) {
+                            // Log error but don't crash the app
+                            e.printStackTrace()
+                        }
+                    }
+                } else {
+                    // Log untuk debugging - logout endpoint memang boleh return 401
+                    android.util.Log.d(
+                        "AuthInterceptor",
+                        "Ignoring 401 from logout endpoint: $requestUrl"
+                    )
+                }
+            }
+
+            // PERBAIKAN: Tambahkan return statement yang hilang
+            response
         }
     }
 
@@ -128,6 +172,6 @@ object NetworkModule {
         get() = if (isEmulator()) {
             "http://10.0.2.2:3005/"
         } else {
-            "http://192.168.1.11:3005/"
+            "http://192.168.10.197:3005/"
         }
 }
