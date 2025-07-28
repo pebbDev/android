@@ -447,8 +447,16 @@ fun AttendanceScreen(
 
         faceVerificationResult?.observeForever { isSuccess ->
             if (isSuccess != null) {
-                // Call ViewModel to handle the result
-                viewModel.onFaceVerificationResult(isSuccess)
+                // FIXED: Only process if verification was successful
+                // If failed, user should stay on FaceScannerScreen for retry
+                if (isSuccess) {
+                    // Call ViewModel to handle the successful result
+                    viewModel.onFaceVerificationResult(isSuccess)
+                } else {
+                    // Face verification failed - don't process, let user retry on FaceScannerScreen
+                    android.util.Log.d("AttendanceScreen", "Face verification failed - user should retry on scanner screen")
+                }
+
                 // Clear the result to prevent re-processing
                 navController.currentBackStackEntry
                     ?.savedStateHandle

@@ -96,7 +96,7 @@ fun FaceScannerScreen(
     LaunchedEffect(uiState.livenessState) {
         when (uiState.livenessState) {
             LivenessState.SUCCESS -> {
-                // Set result and navigate back
+                // FIXED: Send success result and navigate back to proceed with attendance
                 navController.previousBackStackEntry?.savedStateHandle?.set(
                     "face_verification_result",
                     true
@@ -104,8 +104,23 @@ fun FaceScannerScreen(
                 navController.popBackStack()
             }
 
+            LivenessState.TIMEOUT -> {
+                // TIMEOUT means user ran out of time - send failure and go back
+                navController.previousBackStackEntry?.savedStateHandle?.set(
+                    "face_verification_result",
+                    false
+                )
+                navController.popBackStack()
+            }
+
+            // FAILURE stays on screen to allow retry - no automatic navigation
+            LivenessState.FAILURE -> {
+                // Stay on screen, show retry button - user can try again
+                println("DEBUG: Face verification failed - staying on screen for retry")
+            }
+
             else -> {
-                // Continue with current state
+                // Continue with current state - don't navigate anywhere
             }
         }
     }

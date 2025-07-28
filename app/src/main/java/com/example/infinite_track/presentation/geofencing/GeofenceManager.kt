@@ -47,30 +47,42 @@ class GeofenceManager @Inject constructor(@ApplicationContext private val contex
     fun addGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
         // STEP 1: Always remove all existing geofences first (clean slate approach)
         Log.d(TAG, "Membersihkan semua geofence sebelum menambah yang baru...")
-        removeAllGeofences()
 
-        // STEP 2: Create and add the new geofence
-        val geofence = Geofence.Builder()
-            .setRequestId(id)
-            .setCircularRegion(latitude, longitude, radius)
-            .setExpirationDuration(Geofence.NEVER_EXPIRE)
-            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-            .build()
-
-        val geofencingRequest = GeofencingRequest.Builder()
-            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-            .addGeofence(geofence)
-            .build()
-
-        geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
+        geofencingClient.removeGeofences(geofencePendingIntent).run {
             addOnSuccessListener {
-                Log.d(
-                    TAG,
-                    "Geofence berhasil ditambahkan: $id (lat: $latitude, lng: $longitude, radius: ${radius}m)"
-                )
+                Log.d(TAG, "Semua geofence berhasil dihapus, sekarang menambah geofence baru...")
+
+                // STEP 2: Create and add the new geofence ONLY after removal is successful
+                val geofence = Geofence.Builder()
+                    .setRequestId(id)
+                    .setCircularRegion(latitude, longitude, radius)
+                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
+                    .build()
+
+                val geofencingRequest = GeofencingRequest.Builder()
+                    .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                    .addGeofence(geofence)
+                    .build()
+
+                geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
+                    addOnSuccessListener {
+                        Log.d(
+                            TAG,
+                            "Geofence berhasil ditambahkan: $id (lat: $latitude, lng: $longitude, radius: ${radius}m)"
+                        )
+                    }
+                    addOnFailureListener { exception ->
+                        Log.e(TAG, "Gagal menambahkan geofence: $id", exception)
+                    }
+                }
             }
             addOnFailureListener { exception ->
-                Log.e(TAG, "Gagal menambahkan geofence: $id", exception)
+                Log.e(
+                    TAG,
+                    "Gagal menghapus semua geofence, geofence baru tidak akan ditambahkan",
+                    exception
+                )
             }
         }
     }

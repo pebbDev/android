@@ -172,6 +172,6 @@ object NetworkModule {
         get() = if (isEmulator()) {
             "http://10.0.2.2:3005/"
         } else {
-            "http://192.168.10.197:3005/"
+            "http://192.168.214.197:3005/"
         }
 }

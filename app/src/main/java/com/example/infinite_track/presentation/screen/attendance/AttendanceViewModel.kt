@@ -26,12 +26,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -156,7 +153,9 @@ class AttendanceViewModel @Inject constructor(
                 val selectedMode = todayStatus.activeMode.ifEmpty { "Work From Office" }
 
                 // Calculate button state based on today's status
-                val (buttonText, isButtonEnabled, isCheckInMode) = calculateDynamicButtonState(todayStatus)
+                val (buttonText, isButtonEnabled, isCheckInMode) = calculateDynamicButtonState(
+                    todayStatus
+                )
 
                 _uiState.value = _uiState.value.copy(
                     todayStatus = todayStatus,
@@ -187,7 +186,10 @@ class AttendanceViewModel @Inject constructor(
                 }
 
                 Log.d(TAG, "WFO location updated: ${todayStatus.activeLocation}")
-                Log.d(TAG, "Button state updated: $buttonText, enabled: $isButtonEnabled, mode: $isCheckInMode")
+                Log.d(
+                    TAG,
+                    "Button state updated: $buttonText, enabled: $isButtonEnabled, mode: $isCheckInMode"
+                )
 
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to fetch today status", exception)
@@ -583,34 +585,34 @@ class AttendanceViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Calculate button state based on today's status
-     * FIXED: Updated logic following the same pattern as calculateDynamicButtonState
-     */
-    fun calculateButtonState(): Pair<String, Boolean> {
-        val todayStatus = _uiState.value.todayStatus
-        return when {
-            todayStatus == null -> "Loading..." to false
-
-            // PRIORITAS 1: Belum check-in sama sekali (checked_in_at == null)
-            // Selalu tampilkan "Check-in di sini", status enabled berdasarkan can_check_in
-            todayStatus.checkedInAt == null -> "Check-in di sini" to todayStatus.canCheckIn
-
-            // PRIORITAS 2: Sudah check-in, bisa check-out (checked_in_at != null && can_check_out == true)
-            // Tampilkan "Check-out di sini", selalu enabled jika bisa check-out
-            todayStatus.checkedInAt != null && todayStatus.canCheckOut -> {
-                "Check-out di sini" to true
-            }
-
-            // PRIORITAS 3: Sudah check-in, tidak bisa check-out (sudah selesai absensi hari ini)
-            todayStatus.checkedInAt != null && !todayStatus.canCheckOut -> {
-                "Anda sudah absen hari ini" to false
-            }
-
-            // FALLBACK: Kondisi tidak normal (seharusnya tidak pernah tercapai)
-            else -> "Check-in di sini" to false
-        }
-    }
+//    /**
+//     * Calculate button state based on today's status
+//     * FIXED: Updated logic following the same pattern as calculateDynamicButtonState
+//     */
+//    fun calculateButtonState(): Pair<String, Boolean> {
+//        val todayStatus = _uiState.value.todayStatus
+//        return when {
+//            todayStatus == null -> "Loading..." to false
+//
+//            // PRIORITAS 1: Belum check-in sama sekali (checked_in_at == null)
+//            // Selalu tampilkan "Check-in di sini", status enabled berdasarkan can_check_in
+//            todayStatus.checkedInAt == null -> "Check-in di sini" to todayStatus.canCheckIn
+//
+//            // PRIORITAS 2: Sudah check-in, bisa check-out (checked_in_at != null && can_check_out == true)
+//            // Tampilkan "Check-out di sini", selalu enabled jika bisa check-out
+//            todayStatus.checkedInAt != null && todayStatus.canCheckOut -> {
+//                "Check-out di sini" to true
+//            }
+//
+//            // PRIORITAS 3: Sudah check-in, tidak bisa check-out (sudah selesai absensi hari ini)
+//            todayStatus.checkedInAt != null && !todayStatus.canCheckOut -> {
+//                "Anda sudah absen hari ini" to false
+//            }
+//
+//            // FALLBACK: Kondisi tidak normal (seharusnya tidak pernah tercapai)
+//            else -> "Check-in di sini" to false
+//        }
+//    }
 
     /**
      * Handle face verification result - GATEWAY after face verification
@@ -684,9 +686,17 @@ class AttendanceViewModel @Inject constructor(
                         return@collect
                     }
 
+                    // FIXED: Map work mode to correct category_id
+                    val categoryId = when (_uiState.value.selectedWorkMode) {
+                        "Work From Office", "WFO" -> 1  // Work From Office
+                        "Work From Home", "WFH" -> 2    // Work From Home
+                        "WFA", "Work From Anywhere" -> 3 // Work From Anywhere
+                        else -> 1 // Default to WFO
+                    }
+
                     // Create attendance request model with proper parameters
                     val attendanceRequest = AttendanceRequestModel(
-                        categoryId = targetLocation.locationId, // Use target location's ID as category
+                        categoryId = categoryId, // Use correct category ID based on work mode
                         latitude = 0.0, // Will be updated by UseCase with real-time GPS
                         longitude = 0.0, // Will be updated by UseCase with real-time GPS
                         notes = "Check-in via mobile app",

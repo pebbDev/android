@@ -51,7 +51,7 @@ data class ActiveAttendanceSession(
     val statusId: Int,
     val timeIn: String,
     val timeOut: String?,
-    val workHour: String,
+    val workHour: String?,
     val attendanceDate: String,
     val notes: String?
 )
