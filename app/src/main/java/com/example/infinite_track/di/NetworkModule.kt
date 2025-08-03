@@ -31,7 +31,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // 1. Menyediakan Interceptor untuk Logging
+        // 1. Menyediakan Interceptor untuk Logging
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
@@ -47,7 +47,6 @@ object NetworkModule {
         sessionManagerProvider: Provider<SessionManager>
     ): Interceptor {
         return Interceptor { chain ->
-            // Mengambil token secara sinkron dari DataStore
             val token = runBlocking { userPreference.getAuthToken().first() }
             val requestBuilder = chain.request().newBuilder()
 
@@ -87,8 +86,6 @@ object NetworkModule {
                     )
                 }
             }
-
-            // PERBAIKAN: Tambahkan return statement yang hilang
             response
         }
     }
@@ -172,6 +169,6 @@ object NetworkModule {
         get() = if (isEmulator()) {
             "http://10.0.2.2:3005/"
         } else {
-            "http://192.168.214.197:3005/"
+            "http://192.168.23.197:3005/"
         }
 }

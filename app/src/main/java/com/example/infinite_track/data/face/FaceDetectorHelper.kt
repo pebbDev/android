@@ -13,6 +13,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Enum for liveness detection results
+ * Provides progressive feedback for user guidance
+ */
+enum class LivenessResult {
+    SUCCESS,    // Liveness detected successfully
+    IN_PROGRESS, // User is on the right track, needs slight adjustment
+    FAILURE     // Liveness not detected
+}
+
+/**
  * Helper class for ML Kit Face Detection operations
  * Handles face detection, liveness verification (blink/smile), and face extraction
  */
@@ -20,8 +30,13 @@ import javax.inject.Singleton
 class FaceDetectorHelper @Inject constructor() {
 
     companion object {
-        private const val BLINK_THRESHOLD = 0.4f // Threshold for eye open probability
-        private const val SMILE_THRESHOLD = 0.7f // Threshold for smile probability
+        // More flexible thresholds for progressive feedback
+        private const val BLINK_HIGH_THRESHOLD = 0.4f // Original threshold for SUCCESS
+        private const val BLINK_LOW_THRESHOLD = 0.6f  // Lower threshold for IN_PROGRESS
+
+        private const val SMILE_HIGH_THRESHOLD = 0.7f // Original threshold for SUCCESS
+        private const val SMILE_MEDIUM_THRESHOLD = 0.4f // Medium threshold for IN_PROGRESS
+        private const val SMILE_LOW_THRESHOLD = 0.2f   // Minimum threshold for any detection
     }
 
     // ML Kit Face Detector with optimized settings
@@ -84,33 +99,73 @@ class FaceDetectorHelper @Inject constructor() {
     }
 
     /**
-     * Verifies if the person is blinking (liveness detection)
+     * Verifies if the person is blinking (liveness detection) with progressive feedback
      * @param face Detected face from ML Kit
-     * @return true if blink is detected (both eyes have low open probability)
+     * @return LivenessResult indicating blink detection status
      */
-    fun verifyBlink(face: Face): Boolean {
+    fun verifyBlink(face: Face): LivenessResult {
         val leftEyeOpenProbability = face.leftEyeOpenProbability
         val rightEyeOpenProbability = face.rightEyeOpenProbability
 
         return if (leftEyeOpenProbability != null && rightEyeOpenProbability != null) {
-            // Both eyes should have low open probability (indicating they are closed/blinking)
-            leftEyeOpenProbability < BLINK_THRESHOLD && rightEyeOpenProbability < BLINK_THRESHOLD
+            val avgEyeOpenProbability = (leftEyeOpenProbability + rightEyeOpenProbability) / 2f
+
+            println("DEBUG: Blink detection - Left eye: $leftEyeOpenProbability, Right eye: $rightEyeOpenProbability, Average: $avgEyeOpenProbability")
+
+            when {
+                // SUCCESS: Both eyes clearly closed (blinking)
+                leftEyeOpenProbability < BLINK_HIGH_THRESHOLD && rightEyeOpenProbability < BLINK_HIGH_THRESHOLD -> {
+                    println("DEBUG: Blink SUCCESS - Both eyes closed")
+                    LivenessResult.SUCCESS
+                }
+                // IN_PROGRESS: One eye closed or both eyes partially closed
+                avgEyeOpenProbability < BLINK_LOW_THRESHOLD -> {
+                    println("DEBUG: Blink IN_PROGRESS - Getting closer to blinking")
+                    LivenessResult.IN_PROGRESS
+                }
+                // FAILURE: Eyes too open
+                else -> {
+                    println("DEBUG: Blink FAILURE - Eyes still open")
+                    LivenessResult.FAILURE
+                }
+            }
         } else {
-            false // Cannot determine blink if probabilities are not available
+            println("DEBUG: Blink FAILURE - Eye probabilities not available")
+            LivenessResult.FAILURE // Cannot determine blink if probabilities are not available
         }
     }
 
     /**
-     * Verifies if the person is smiling (liveness detection)
+     * Verifies if the person is smiling (liveness detection) with progressive feedback
      * @param face Detected face from ML Kit
-     * @return true if smile is detected
+     * @return LivenessResult indicating smile detection status
      */
-    fun verifySmile(face: Face): Boolean {
+    fun verifySmile(face: Face): LivenessResult {
         val smilingProbability = face.smilingProbability
+
         return if (smilingProbability != null) {
-            smilingProbability > SMILE_THRESHOLD
+            println("DEBUG: Smile detection - Probability: $smilingProbability")
+
+            when {
+                // SUCCESS: Strong smile detected
+                smilingProbability > SMILE_HIGH_THRESHOLD -> {
+                    println("DEBUG: Smile SUCCESS - Strong smile detected")
+                    LivenessResult.SUCCESS
+                }
+                // IN_PROGRESS: Moderate smile, encourage user to smile more
+                smilingProbability > SMILE_MEDIUM_THRESHOLD -> {
+                    println("DEBUG: Smile IN_PROGRESS - Moderate smile, needs more")
+                    LivenessResult.IN_PROGRESS
+                }
+                // FAILURE: Little to no smile
+                else -> {
+                    println("DEBUG: Smile FAILURE - Not smiling enough")
+                    LivenessResult.FAILURE
+                }
+            }
         } else {
-            false // Cannot determine smile if probability is not available
+            println("DEBUG: Smile FAILURE - Smile probability not available")
+            LivenessResult.FAILURE // Cannot determine smile if probability is not available
         }
     }
 

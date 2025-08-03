@@ -13,6 +13,8 @@ import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import kotlinx.coroutines.flow.first
+import org.json.JSONObject
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,6 +29,28 @@ class AttendanceRepositoryImpl @Inject constructor(
     }
 
     /**
+     * Extract error message from HTTP response body
+     */
+    private fun extractErrorMessage(exception: HttpException): String {
+        return try {
+            val errorBody = exception.response()?.errorBody()?.string()
+            if (!errorBody.isNullOrEmpty()) {
+                val jsonObject = JSONObject(errorBody)
+                val message = jsonObject.optString("message", "")
+                if (message.isNotEmpty()) {
+                    Log.d(TAG, "Extracted error message: $message")
+                    return message
+                }
+            }
+            // Fallback to HTTP status message
+            "HTTP ${exception.code()} ${exception.message()}"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract error message", e)
+            "HTTP ${exception.code()} ${exception.message()}"
+        }
+    }
+
+    /**
      * Gets the current day's attendance status
      */
     override suspend fun getTodayStatus(): Result<TodayStatus> {
@@ -38,6 +62,10 @@ class AttendanceRepositoryImpl @Inject constructor(
             } else {
                 Result.failure(Exception(response.message ?: "Unknown error"))
             }
+        } catch (e: HttpException) {
+            Log.e(TAG, "HTTP Error getting today's status", e)
+            val errorMessage = extractErrorMessage(e)
+            Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting today's status", e)
             Result.failure(e)
@@ -69,6 +97,10 @@ class AttendanceRepositoryImpl @Inject constructor(
             } else {
                 Result.failure(Exception(response.message))
             }
+        } catch (e: HttpException) {
+            Log.e(TAG, "HTTP Error during check-in", e)
+            val errorMessage = extractErrorMessage(e)
+            Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Log.e(TAG, "Error during check-in", e)
             Result.failure(e)
@@ -104,6 +136,10 @@ class AttendanceRepositoryImpl @Inject constructor(
             } else {
                 Result.failure(Exception(response.message))
             }
+        } catch (e: HttpException) {
+            Log.e(TAG, "HTTP Error during check-out", e)
+            val errorMessage = extractErrorMessage(e)
+            Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Log.e(TAG, "Error during check-out", e)
             Result.failure(e)

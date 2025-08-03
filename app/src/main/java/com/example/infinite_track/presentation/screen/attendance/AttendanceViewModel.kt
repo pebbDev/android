@@ -23,18 +23,44 @@ import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * Sealed class untuk merepresentasikan target navigasi
+ */
+sealed class NavigationTarget {
+    data class FaceScanner(val isCheckIn: Boolean) : NavigationTarget()
+    data class WfaBooking(val route: String) : NavigationTarget()
+    data class LocationSearch(val params: String) : NavigationTarget()
+}
+
+/**
+ * Sealed class untuk merepresentasikan state dialog
+ */
+sealed class DialogState {
+    data class Success(val message: String) : DialogState()
+    data class Error(val message: String) : DialogState()
+    data class LocationError(val message: String) : DialogState()
+}
+
+/**
+ * Sealed class untuk map animation commands
+ */
+sealed class MapAnimationTarget {
+    data class AnimateToLocation(val point: Point, val zoomLevel: Double) : MapAnimationTarget()
+    data class AnimateToFitBounds(val points: List<Point>) : MapAnimationTarget()
+    object ShowLocationError : MapAnimationTarget()
+}
+
+/**
  * Simplified state object focused on reactive geofence integration
  * Now supports WFO, WFH, and WFA location markers with Pick on Map functionality
+ * Updated for state-driven architecture
  */
 data class AttendanceScreenState(
     val uiState: UiState<Unit> = UiState.Loading,
@@ -62,13 +88,19 @@ data class AttendanceScreenState(
     // Attendance button state
     val buttonText: String = "Loading...",
     val isButtonEnabled: Boolean = false,
-    val isCheckInMode: Boolean = true // Track whether we're in check-in or check-out mode
+    val isCheckInMode: Boolean = true, // Track whether we're in check-in or check-out mode
+
+    // State-driven properties for navigation and dialogs
+    val navigationTarget: NavigationTarget? = null, // Navigation commands
+    val activeDialog: DialogState? = null, // Dialog state
+    val mapAnimationTarget: MapAnimationTarget? = null // Map animation commands
 )
 
 /**
  * Simplified ViewModel that is fully reactive to geofence state
  * Removed manual GPS tracking and distance calculation logic
  * Uses geofence as the single source of truth for validation
+ * UPDATED: Migrated to fully state-driven architecture
  */
 @HiltViewModel
 class AttendanceViewModel @Inject constructor(
@@ -85,25 +117,9 @@ class AttendanceViewModel @Inject constructor(
     private val checkOutUseCase: CheckOutUseCase
 ) : ViewModel() {
 
-    /**
-     * Sealed class for map events sent to UI
-     */
-    sealed class MapEvent {
-        data class AnimateToLocation(val point: Point, val zoomLevel: Double) : MapEvent()
-        data class AnimateToFitBounds(val points: List<Point>) : MapEvent()
-        object ShowLocationError : MapEvent()
-        data class NavigateToWfaBooking(val route: String) : MapEvent()
-        data class NavigateToFaceScanner(val isCheckIn: Boolean) : MapEvent()
-    }
-
-    // Main UI state
+    // Main UI state - now the SINGLE source of truth
     private val _uiState = MutableStateFlow(AttendanceScreenState())
     val uiState: StateFlow<AttendanceScreenState> = _uiState.asStateFlow()
-
-
-    // Channel for one-time events to UI
-    private val _mapEvent = Channel<MapEvent>()
-    val mapEvent = _mapEvent.receiveAsFlow()
 
     // Job for UI-focused location updates (display purposes only)
     private var displayLocationJob: Job? = null
@@ -115,6 +131,34 @@ class AttendanceViewModel @Inject constructor(
 
     init {
         initializeData()
+    }
+
+    // ===========================================
+    // Functions for consuming state events
+    // ===========================================
+
+    /**
+     * Called by UI after navigation is handled
+     * Resets navigationTarget to null
+     */
+    fun onNavigationHandled() {
+        _uiState.value = _uiState.value.copy(navigationTarget = null)
+    }
+
+    /**
+     * Called by UI after dialog is dismissed
+     * Resets activeDialog to null
+     */
+    fun onDialogDismissed() {
+        _uiState.value = _uiState.value.copy(activeDialog = null)
+    }
+
+    /**
+     * Called by UI after map animation is completed
+     * Resets mapAnimationTarget to null
+     */
+    fun onMapAnimationHandled() {
+        _uiState.value = _uiState.value.copy(mapAnimationTarget = null)
     }
 
     /**
@@ -180,7 +224,12 @@ class AttendanceViewModel @Inject constructor(
                 todayStatus.activeLocation?.let { location ->
                     val wfoPoint = Point.fromLngLat(location.longitude, location.latitude)
                     viewModelScope.launch {
-                        _mapEvent.send(MapEvent.AnimateToLocation(wfoPoint, 15.0))
+                        _uiState.value = _uiState.value.copy(
+                            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
+                                wfoPoint,
+                                15.0
+                            )
+                        )
                     }
                     Log.d(TAG, "Initial camera focus event sent to WFO location")
                 }
@@ -382,8 +431,8 @@ class AttendanceViewModel @Inject constructor(
                         setupGeofence(wfhLocation)
 
                         val wfhPoint = Point.fromLngLat(wfhLocation.longitude, wfhLocation.latitude)
-                        _mapEvent.send(
-                            MapEvent.AnimateToLocation(
+                        _uiState.value = _uiState.value.copy(
+                            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
                                 point = wfhPoint,
                                 zoomLevel = 15.0
                             )
@@ -399,8 +448,8 @@ class AttendanceViewModel @Inject constructor(
                         setupGeofence(wfoLocation)
 
                         val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
-                        _mapEvent.send(
-                            MapEvent.AnimateToLocation(
+                        _uiState.value = _uiState.value.copy(
+                            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
                                 point = wfoPoint,
                                 zoomLevel = 15.0
                             )
@@ -437,7 +486,9 @@ class AttendanceViewModel @Inject constructor(
                         if (recommendations.isNotEmpty()) {
                             val points =
                                 recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
-                            _mapEvent.send(MapEvent.AnimateToFitBounds(points))
+                            _uiState.value = _uiState.value.copy(
+                                mapAnimationTarget = MapAnimationTarget.AnimateToFitBounds(points)
+                            )
                             Log.d(
                                 TAG,
                                 "WFA recommendations fetched: ${recommendations.size} locations"
@@ -464,7 +515,9 @@ class AttendanceViewModel @Inject constructor(
                         if (recommendations.isNotEmpty()) {
                             val points =
                                 recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
-                            _mapEvent.send(MapEvent.AnimateToFitBounds(points))
+                            _uiState.value = _uiState.value.copy(
+                                mapAnimationTarget = MapAnimationTarget.AnimateToFitBounds(points)
+                            )
                             Log.d(
                                 TAG,
                                 "WFA recommendations fetched with cached location: ${recommendations.size} locations"
@@ -505,8 +558,8 @@ class AttendanceViewModel @Inject constructor(
         // Focus camera on selected WFA location
         viewModelScope.launch {
             val point = Point.fromLngLat(recommendation.longitude, recommendation.latitude)
-            _mapEvent.send(
-                MapEvent.AnimateToLocation(
+            _uiState.value = _uiState.value.copy(
+                mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
                     point,
                     16.0
                 )
@@ -547,7 +600,9 @@ class AttendanceViewModel @Inject constructor(
                     // address is no longer sent - WfaBookingViewModel will fetch it
                 )
                 viewModelScope.launch {
-                    _mapEvent.send(MapEvent.NavigateToWfaBooking(route))
+                    _uiState.value = _uiState.value.copy(
+                        navigationTarget = NavigationTarget.WfaBooking(route)
+                    )
                 }
             } ?: run {
                 Log.w(TAG, "Booking clicked in WFA mode but no location selected.")
@@ -581,38 +636,11 @@ class AttendanceViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(isCheckInMode = isCheckIn)
 
         viewModelScope.launch {
-            _mapEvent.send(MapEvent.NavigateToFaceScanner(isCheckIn))
+            _uiState.value = _uiState.value.copy(
+                navigationTarget = NavigationTarget.FaceScanner(isCheckIn)
+            )
         }
     }
-
-//    /**
-//     * Calculate button state based on today's status
-//     * FIXED: Updated logic following the same pattern as calculateDynamicButtonState
-//     */
-//    fun calculateButtonState(): Pair<String, Boolean> {
-//        val todayStatus = _uiState.value.todayStatus
-//        return when {
-//            todayStatus == null -> "Loading..." to false
-//
-//            // PRIORITAS 1: Belum check-in sama sekali (checked_in_at == null)
-//            // Selalu tampilkan "Check-in di sini", status enabled berdasarkan can_check_in
-//            todayStatus.checkedInAt == null -> "Check-in di sini" to todayStatus.canCheckIn
-//
-//            // PRIORITAS 2: Sudah check-in, bisa check-out (checked_in_at != null && can_check_out == true)
-//            // Tampilkan "Check-out di sini", selalu enabled jika bisa check-out
-//            todayStatus.checkedInAt != null && todayStatus.canCheckOut -> {
-//                "Check-out di sini" to true
-//            }
-//
-//            // PRIORITAS 3: Sudah check-in, tidak bisa check-out (sudah selesai absensi hari ini)
-//            todayStatus.checkedInAt != null && !todayStatus.canCheckOut -> {
-//                "Anda sudah absen hari ini" to false
-//            }
-//
-//            // FALLBACK: Kondisi tidak normal (seharusnya tidak pernah tercapai)
-//            else -> "Check-in di sini" to false
-//        }
-//    }
 
     /**
      * Handle face verification result - GATEWAY after face verification
@@ -624,7 +652,7 @@ class AttendanceViewModel @Inject constructor(
         if (!isSuccess) {
             Log.d(TAG, "Face verification failed - aborting attendance process")
             _uiState.value = _uiState.value.copy(
-                error = "Verifikasi wajah gagal. Silakan coba lagi."
+                activeDialog = DialogState.Error("Verifikasi wajah gagal. Silakan coba lagi.")
             )
             return
         }
@@ -639,7 +667,7 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Proceed with check-in after successful face verification
-     * FIXED: Added proper targetLocation determination logic
+     * FIXED: Added proper error message extraction from server response
      */
     private fun proceedWithCheckIn() {
         viewModelScope.launch {
@@ -647,9 +675,9 @@ class AttendanceViewModel @Inject constructor(
                 Log.d(TAG, "Proceeding with check-in after face verification")
 
                 // Clear any previous error
-                _uiState.value = _uiState.value.copy(error = null)
+                _uiState.value = _uiState.value.copy(activeDialog = null)
 
-                // FIXED: Determine target location based on selected work mode
+                // Determine target location based on selected work mode
                 val targetLocation = when (_uiState.value.selectedWorkMode) {
                     "Work From Home", "WFH" -> _uiState.value.wfhLocation
                     "Work From Office", "WFO" -> _uiState.value.wfoLocation
@@ -672,7 +700,7 @@ class AttendanceViewModel @Inject constructor(
 
                 if (targetLocation == null) {
                     _uiState.value = _uiState.value.copy(
-                        error = "Target location not available for ${_uiState.value.selectedWorkMode}. Please try again."
+                        activeDialog = DialogState.Error("Target location not available for ${_uiState.value.selectedWorkMode}. Please try again.")
                     )
                     return@launch
                 }
@@ -681,12 +709,12 @@ class AttendanceViewModel @Inject constructor(
                 getLoggedInUserUseCase().collect { user ->
                     if (user == null) {
                         _uiState.value = _uiState.value.copy(
-                            error = "User information not available. Please try again."
+                            activeDialog = DialogState.Error("User information not available. Please try again.")
                         )
                         return@collect
                     }
 
-                    // FIXED: Map work mode to correct category_id
+                    // Map work mode to correct category_id
                     val categoryId = when (_uiState.value.selectedWorkMode) {
                         "Work From Office", "WFO" -> 1  // Work From Office
                         "Work From Home", "WFH" -> 2    // Work From Home
@@ -704,17 +732,27 @@ class AttendanceViewModel @Inject constructor(
                         type = "checkin"
                     )
 
-                    // FIXED: Call CheckInUseCase with both request and target location
+                    // Call CheckInUseCase with both request and target location
                     checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
                         Log.d(TAG, "Check-in successful: $activeSession")
 
                         // Refresh today's status to get updated data
                         fetchTodayStatus()
 
-                    }.onFailure { exception ->
-                        Log.e(TAG, "Check-in failed", exception)
+                        // Send success event to UI with appropriate message
                         _uiState.value = _uiState.value.copy(
-                            error = exception.message ?: "Check-in failed. Please try again."
+                            activeDialog = DialogState.Success("Check-in berhasil! Selamat bekerja hari ini.")
+                        )
+
+                    }.onFailure { exception ->
+                        Log.e(TAG, "Check-in failed: ${exception.message}", exception)
+
+                        // Extract the actual error message from the exception
+                        val errorMessage = exception.message ?: "Check-in gagal. Silakan coba lagi."
+
+                        // Send error event to UI with the actual server message
+                        _uiState.value = _uiState.value.copy(
+                            activeDialog = DialogState.Error(errorMessage)
                         )
                     }
                 }
@@ -722,7 +760,7 @@ class AttendanceViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error in proceedWithCheckIn", e)
                 _uiState.value = _uiState.value.copy(
-                    error = "Unexpected error during check-in: ${e.message}"
+                    activeDialog = DialogState.Error("Unexpected error during check-in: ${e.message}")
                 )
             }
         }
@@ -730,7 +768,7 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Proceed with check-out after successful face verification
-     * PRIVATE - only called from onFaceVerificationResult
+     * FIXED: Added proper error message extraction from server response
      */
     private fun proceedWithCheckOut() {
         viewModelScope.launch {
@@ -738,7 +776,7 @@ class AttendanceViewModel @Inject constructor(
                 Log.d(TAG, "Proceeding with check-out after face verification")
 
                 // Clear any previous error
-                _uiState.value = _uiState.value.copy(error = null)
+                _uiState.value = _uiState.value.copy(activeDialog = null)
 
                 // Call CheckOutUseCase - it will handle everything internally
                 checkOutUseCase().onSuccess { activeSession ->
@@ -747,17 +785,27 @@ class AttendanceViewModel @Inject constructor(
                     // Refresh today's status to get updated data
                     fetchTodayStatus()
 
-                }.onFailure { exception ->
-                    Log.e(TAG, "Check-out failed", exception)
+                    // Send success event to UI with appropriate message
                     _uiState.value = _uiState.value.copy(
-                        error = exception.message ?: "Check-out failed. Please try again."
+                        activeDialog = DialogState.Success("Check-out berhasil! Terima kasih atas kerja keras Anda hari ini.")
+                    )
+
+                }.onFailure { exception ->
+                    Log.e(TAG, "Check-out failed: ${exception.message}", exception)
+
+                    // Extract the actual error message from the exception
+                    val errorMessage = exception.message ?: "Check-out gagal. Silakan coba lagi."
+
+                    // Send error event to UI with the actual server message
+                    _uiState.value = _uiState.value.copy(
+                        activeDialog = DialogState.Error(errorMessage)
                     )
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in proceedWithCheckOut", e)
                 _uiState.value = _uiState.value.copy(
-                    error = "Unexpected error during check-out: ${e.message}"
+                    activeDialog = DialogState.Error("Unexpected error during check-out: ${e.message}")
                 )
             }
         }
@@ -767,7 +815,7 @@ class AttendanceViewModel @Inject constructor(
      * Clear error message
      */
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _uiState.value = _uiState.value.copy(activeDialog = null)
     }
 
     /**
@@ -817,8 +865,8 @@ class AttendanceViewModel @Inject constructor(
 
                     // Send map animation event
                     val focusPoint = Point.fromLngLat(longitude, latitude)
-                    _mapEvent.send(
-                        MapEvent.AnimateToLocation(
+                    _uiState.value = _uiState.value.copy(
+                        mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
                             point = focusPoint,
                             zoomLevel = 15.0
                         )
@@ -830,12 +878,16 @@ class AttendanceViewModel @Inject constructor(
                 }.onFailure { exception ->
                     Log.e(TAG, "=== GPS LOCATION FAILED ===")
                     Log.e(TAG, "Failed to get current GPS location: ${exception.message}")
-                    _mapEvent.send(MapEvent.ShowLocationError)
+                    _uiState.value = _uiState.value.copy(
+                        mapAnimationTarget = MapAnimationTarget.ShowLocationError
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "=== UNEXPECTED ERROR ===")
                 Log.e(TAG, "Error in onFocusLocationClicked: ${e.message}")
-                _mapEvent.send(MapEvent.ShowLocationError)
+                _uiState.value = _uiState.value.copy(
+                    mapAnimationTarget = MapAnimationTarget.ShowLocationError
+                )
             }
         }
     }
@@ -849,8 +901,8 @@ class AttendanceViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value.wfoLocation?.let { wfoLocation ->
                 val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
-                _mapEvent.send(
-                    MapEvent.AnimateToLocation(
+                _uiState.value = _uiState.value.copy(
+                    mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
                         point = wfoPoint,
                         zoomLevel = 15.0
                     )
@@ -891,8 +943,8 @@ class AttendanceViewModel @Inject constructor(
             )
 
             // Animate map to the selected location
-            _mapEvent.send(
-                MapEvent.AnimateToLocation(
+            _uiState.value = _uiState.value.copy(
+                mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
                     Point.fromLngLat(location.longitude, location.latitude),
                     15.0
                 )

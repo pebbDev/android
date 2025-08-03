@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
@@ -51,6 +52,7 @@ import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.utils.DialogHelper
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
@@ -95,16 +97,52 @@ fun AttendanceScreen(
         bottomSheetState = bottomSheetState
     )
 
-    // Handle map events from ViewModel with enhanced camera control
-    LaunchedEffect(Unit) {
-        viewModel.mapEvent.collect { event ->
-            when (event) {
-                is AttendanceViewModel.MapEvent.AnimateToLocation -> {
+    // =======================================================
+    // NEW: State-driven LaunchedEffect for Navigation
+    // =======================================================
+    LaunchedEffect(uiState.navigationTarget) {
+        uiState.navigationTarget?.let { target ->
+            when (target) {
+                is NavigationTarget.FaceScanner -> {
+                    val action = if (target.isCheckIn) "checkin" else "checkout"
+                    val route = Screen.FaceScanner.createRoute(action)
+                    navController.navigate(route)
+                    android.util.Log.d(
+                        "AttendanceScreen",
+                        "Navigating to face scanner for $action"
+                    )
+                }
+                is NavigationTarget.WfaBooking -> {
+                    navController.navigate(target.route)
+                    android.util.Log.d(
+                        "AttendanceScreen",
+                        "Navigating to WFA booking screen with route: ${target.route}"
+                    )
+                }
+                is NavigationTarget.LocationSearch -> {
+                    navController.navigate(target.params)
+                    android.util.Log.d(
+                        "AttendanceScreen",
+                        "Navigating to location search with params: ${target.params}"
+                    )
+                }
+            }
+            // Notify ViewModel that navigation has been handled
+            viewModel.onNavigationHandled()
+        }
+    }
+
+    // =======================================================
+    // NEW: State-driven LaunchedEffect for Map Animation
+    // =======================================================
+    LaunchedEffect(uiState.mapAnimationTarget) {
+        uiState.mapAnimationTarget?.let { animationTarget ->
+            when (animationTarget) {
+                is MapAnimationTarget.AnimateToLocation -> {
                     mapViewInstance?.let { mapView ->
-                        // Use the enhanced event data with Point and zoomLevel
                         val cameraOptions = CameraOptions.Builder()
-                            .center(event.point)
-                            .zoom(event.zoomLevel)
+                            .center(animationTarget.point)
+                            .zoom(animationTarget.zoomLevel)
                             .pitch(0.0)
                             .bearing(0.0)
                             .build()
@@ -118,17 +156,16 @@ fun AttendanceScreen(
 
                         android.util.Log.d(
                             "AttendanceScreen",
-                            "Camera animated to ${event.point.latitude()}, ${event.point.longitude()} with zoom ${event.zoomLevel}"
+                            "Camera animated to ${animationTarget.point.latitude()}, ${animationTarget.point.longitude()} with zoom ${animationTarget.zoomLevel}"
                         )
                     }
                 }
 
-                is AttendanceViewModel.MapEvent.AnimateToFitBounds -> {
+                is MapAnimationTarget.AnimateToFitBounds -> {
                     mapViewInstance?.let { mapView ->
-                        // Use Mapbox's cameraForCoordinates to fit all WFA recommendations
-                        if (event.points.isNotEmpty()) {
+                        if (animationTarget.points.isNotEmpty()) {
                             val cameraOptions = mapView.mapboxMap.cameraForCoordinates(
-                                coordinates = event.points,
+                                coordinates = animationTarget.points,
                                 camera = CameraOptions.Builder().build(),
                                 coordinatesPadding = com.mapbox.maps.EdgeInsets(
                                     50.0,
@@ -149,40 +186,22 @@ fun AttendanceScreen(
 
                             android.util.Log.d(
                                 "AttendanceScreen",
-                                "Camera animated to fit ${event.points.size} WFA locations"
+                                "Camera animated to fit ${animationTarget.points.size} WFA locations"
                             )
                         }
                     }
                 }
 
-                is AttendanceViewModel.MapEvent.ShowLocationError -> {
-                    // Handle error - could add snackbar or toast
+                is MapAnimationTarget.ShowLocationError -> {
                     android.util.Log.e(
                         "AttendanceScreen",
                         "Failed to get current location for focus"
                     )
-                }
-
-                is AttendanceViewModel.MapEvent.NavigateToWfaBooking -> {
-                    // Navigate to WFA booking screen
-                    navController.navigate(event.route)
-                    android.util.Log.d(
-                        "AttendanceScreen",
-                        "Navigating to WFA booking screen with route: ${event.route}"
-                    )
-                }
-
-                is AttendanceViewModel.MapEvent.NavigateToFaceScanner -> {
-                    // Navigate to face scanner screen for attendance verification
-                    val action = if (event.isCheckIn) "checkin" else "checkout"
-                    val route = Screen.FaceScanner.createRoute(action)
-                    navController.navigate(route)
-                    android.util.Log.d(
-                        "AttendanceScreen",
-                        "Navigating to face scanner for $action"
-                    )
+                    // Could show a Toast or Snackbar here
                 }
             }
+            // Notify ViewModel that map animation has been handled
+            viewModel.onMapAnimationHandled()
         }
     }
 
@@ -438,6 +457,62 @@ fun AttendanceScreen(
         }
     }
 
+    // =======================================================
+    // NEW: State-driven LaunchedEffect for Dialog Handling
+    // =======================================================
+    LaunchedEffect(uiState.activeDialog) {
+        uiState.activeDialog?.let { dialog ->
+            when (dialog) {
+                is DialogState.Success -> {
+                    // Show success dialog with dynamic message from server
+                    DialogHelper.showDialogSuccess(
+                        context = navController.context,
+                        title = "Absensi Berhasil",
+                        textContent = dialog.message,
+                        imageRes = R.drawable.icon_success,
+                        onConfirm = {
+                            // Navigate to HomeScreen after success
+                            navController.navigate(Screen.Home.route) {
+                                // Clear backstack to prevent going back to attendance
+                                popUpTo(Screen.Home.route) {
+                                    inclusive = false
+                                }
+                            }
+                            // Notify ViewModel that dialog has been handled
+                            viewModel.onDialogDismissed()
+                        }
+                    )
+                }
+
+                is DialogState.Error -> {
+                    // Show error dialog with dynamic message from server
+                    DialogHelper.showDialogError(
+                        context = navController.context,
+                        title = "Absensi Gagal",
+                        textContent = dialog.message,
+                        onConfirm = {
+                            // Stay on AttendanceScreen - no navigation needed
+                            // User can try again
+                            viewModel.onDialogDismissed()
+                        }
+                    )
+                }
+
+                is DialogState.LocationError -> {
+                    // Show location error dialog
+                    DialogHelper.showDialogError(
+                        context = navController.context,
+                        title = "Error Lokasi",
+                        textContent = dialog.message,
+                        onConfirm = {
+                            viewModel.onDialogDismissed()
+                        }
+                    )
+                }
+            }
+        }
+    }
+
     // Handle face verification result from FaceScannerScreen
     LaunchedEffect(Unit) {
         // Get face verification result from savedStateHandle
@@ -453,8 +528,11 @@ fun AttendanceScreen(
                     // Call ViewModel to handle the successful result
                     viewModel.onFaceVerificationResult(isSuccess)
                 } else {
-                    // Face verification failed - don't process, let user retry on FaceScannerScreen
-                    android.util.Log.d("AttendanceScreen", "Face verification failed - user should retry on scanner screen")
+                    // Face verification failed - don't process, let user retry on scanner screen
+                    android.util.Log.d(
+                        "AttendanceScreen",
+                        "Face verification failed - user should retry on scanner screen"
+                    )
                 }
 
                 // Clear the result to prevent re-processing
@@ -462,23 +540,6 @@ fun AttendanceScreen(
                     ?.savedStateHandle
                     ?.remove<Boolean>("face_verification_result")
             }
-        }
-    }
-
-    // Handle error dialog display
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let { errorMessage ->
-            // Here you would typically show a dialog using DialogHelper
-            // For now, we'll log the error and clear it
-            android.util.Log.e("AttendanceScreen", "Error occurred: $errorMessage")
-
-            // TODO: Replace with actual DialogHelper implementation
-            // DialogHelper.showErrorDialog(context, errorMessage) {
-            //     viewModel.clearError()
-            // }
-
-            // For now, clear error after logging
-            viewModel.clearError()
         }
     }
 }

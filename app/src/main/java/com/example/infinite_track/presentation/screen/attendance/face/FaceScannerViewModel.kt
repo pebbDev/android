@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.data.face.FaceDetectorHelper
+import com.example.infinite_track.data.face.LivenessResult
 import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.google.mlkit.vision.face.Face
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -85,7 +86,13 @@ class FaceScannerViewModel @Inject constructor(
     /**
      * Inisialisasi scanner dengan random challenge
      */
-    private fun initializeScanner() {
+    fun initializeScanner() {
+        // Cancel any ongoing jobs first
+        timeoutJob?.cancel()
+        livenessJob?.cancel()
+        currentDetectedFace = null
+        currentImageBitmap = null
+
         // Pilih challenge secara acak
         val randomChallenge = if ((0..1).random() == 0) {
             LivenessChallenge.BLINK
@@ -202,25 +209,54 @@ class FaceScannerViewModel @Inject constructor(
     }
 
     /**
-     * Cek apakah challenge liveness saat ini terpenuhi
+     * Cek apakah challenge liveness saat ini terpenuhi dengan progressive feedback
      */
     private fun checkLivenessChallenge(face: Face) {
-        val isLivenessDetected = when (_uiState.value.currentChallenge) {
+        val livenessResult = when (_uiState.value.currentChallenge) {
             LivenessChallenge.BLINK -> faceDetectorHelper.verifyBlink(face)
             LivenessChallenge.SMILE -> faceDetectorHelper.verifySmile(face)
         }
 
-        if (isLivenessDetected) {
-            _uiState.value = _uiState.value.copy(
-                livenessState = LivenessState.LIVENESS_DETECTED,
-                instructionText = "Liveness terdeteksi! Tetap di posisi..."
-            )
+        when (livenessResult) {
+            LivenessResult.SUCCESS -> {
+                // Liveness berhasil terdeteksi - lanjut ke verifikasi
+                _uiState.value = _uiState.value.copy(
+                    livenessState = LivenessState.LIVENESS_DETECTED,
+                    instructionText = "Liveness terdeteksi! Tetap di posisi..."
+                )
 
-            // Tahan deteksi sebentar untuk stabilitas, lalu lanjut verifikasi
-            livenessJob?.cancel()
-            livenessJob = viewModelScope.launch {
-                delay(LIVENESS_HOLD_DURATION)
-                proceedWithFaceVerification()
+                // Tahan deteksi sebentar untuk stabilitas, lalu lanjut verifikasi
+                livenessJob?.cancel()
+                livenessJob = viewModelScope.launch {
+                    delay(LIVENESS_HOLD_DURATION)
+                    proceedWithFaceVerification()
+                }
+            }
+
+            LivenessResult.IN_PROGRESS -> {
+                // User hampir berhasil - berikan umpan balik yang memandu
+                val progressText = when (_uiState.value.currentChallenge) {
+                    LivenessChallenge.BLINK -> "Hampir berhasil! Coba kedipkan kedua mata bersamaan"
+                    LivenessChallenge.SMILE -> "Bagus! Tersenyum sedikit lebih lebar lagi"
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    livenessState = LivenessState.WAITING_FOR_LIVENESS,
+                    instructionText = progressText
+                )
+            }
+
+            LivenessResult.FAILURE -> {
+                // Belum berhasil - berikan instruksi yang jelas
+                val failureText = when (_uiState.value.currentChallenge) {
+                    LivenessChallenge.BLINK -> "Silakan kedipkan mata Anda dengan jelas"
+                    LivenessChallenge.SMILE -> "Silakan tersenyum dengan lebih jelas"
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    livenessState = LivenessState.WAITING_FOR_LIVENESS,
+                    instructionText = failureText
+                )
             }
         }
     }

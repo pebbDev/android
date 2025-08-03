@@ -85,8 +85,12 @@ fun FaceScannerScreen(
     // Camera executor
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Request camera permission when screen opens
+    // Reset the scanner and request camera permission when screen becomes visible
     LaunchedEffect(Unit) {
+        // First, reset the scanner to ensure fresh state
+        viewModel.initializeScanner()
+
+        // Then request camera permission if not granted
         if (!cameraPermissionState.status.isGranted) {
             cameraPermissionState.launchPermissionRequest()
         }
