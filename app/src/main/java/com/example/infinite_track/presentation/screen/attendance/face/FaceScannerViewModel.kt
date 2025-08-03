@@ -79,21 +79,23 @@ class FaceScannerViewModel @Inject constructor(
     private var currentDetectedFace: Face? = null
     private var currentImageBitmap: Bitmap? = null
 
-    init {
-        initializeScanner()
-    }
-
     /**
      * Inisialisasi scanner dengan random challenge
+     * DIPUBLIKKAN agar bisa dipanggil dari UI untuk reset
      */
     fun initializeScanner() {
-        // Cancel any ongoing jobs first
+        // STEP 1: Cancel any ongoing jobs first
         timeoutJob?.cancel()
         livenessJob?.cancel()
+
+        // STEP 2: Clear all cached data
         currentDetectedFace = null
         currentImageBitmap = null
 
-        // Pilih challenge secara acak
+        // STEP 3: Reinitialize FaceDetector
+        faceDetectorHelper.reinitialize()
+
+        // STEP 4: Pilih challenge secara acak
         val randomChallenge = if ((0..1).random() == 0) {
             LivenessChallenge.BLINK
         } else {
@@ -105,7 +107,8 @@ class FaceScannerViewModel @Inject constructor(
             LivenessChallenge.SMILE -> "Posisikan wajah Anda di dalam frame, lalu tersenyum"
         }
 
-        _uiState.value = _uiState.value.copy(
+        // STEP 5: Reset state ke kondisi benar-benar fresh
+        _uiState.value = FaceScannerState(
             currentChallenge = randomChallenge,
             instructionText = instructionText,
             livenessState = LivenessState.DETECTING_FACE,
@@ -114,22 +117,30 @@ class FaceScannerViewModel @Inject constructor(
             isProcessing = false,
             errorMessage = null,
             boundingBox = null,
-            progress = 0f
+            progress = 0f,
+            imageSize = null
         )
 
+        // STEP 6: Start fresh timeout
         startTimeout()
+    }
+
+    /**
+     * Reset scanner untuk mencoba lagi
+     */
+    fun resetScanner() {
+        initializeScanner()
     }
 
     /**
      * Proses frame dari kamera untuk deteksi wajah dan verifikasi liveness
      */
     fun processImageProxy(imageProxy: ImageProxy, imageBitmap: Bitmap) {
-        // Jangan proses jika sedang dalam proses atau sudah timeout/selesai
-        if (_uiState.value.isProcessing ||
-            _uiState.value.livenessState == LivenessState.SUCCESS ||
-            _uiState.value.livenessState == LivenessState.TIMEOUT ||
-            _uiState.value.livenessState == LivenessState.FAILURE
-        ) {
+        val currentState = _uiState.value.livenessState
+        val isProcessing = _uiState.value.isProcessing
+
+        // Hanya blokir jika benar-benar sedang processing atau sudah final success
+        if (isProcessing || currentState == LivenessState.SUCCESS) {
             imageProxy.close()
             return
         }
@@ -169,11 +180,6 @@ class FaceScannerViewModel @Inject constructor(
                 height = imageHeight.toFloat()
             )
         )
-
-        // Debug log untuk melihat koordinat
-        println("Face detected - Android Rect: $androidRect")
-        println("Face detected - Compose Rect: $composeRect")
-        println("Image size: ${imageWidth}x${imageHeight}")
 
         // Cek apakah wajah berada di posisi yang baik
         if (!faceDetectorHelper.isFaceWellPositioned(face, imageWidth, imageHeight)) {
@@ -282,10 +288,6 @@ class FaceScannerViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // DEBUG: Log bitmap info sebelum ekstraksi
-                println("DEBUG: Original bitmap size: ${bitmap.width}x${bitmap.height}")
-                println("DEBUG: Face bounding box: ${face.boundingBox}")
-
                 // Ekstrak bitmap wajah dari gambar penuh
                 val faceBitmap = faceDetectorHelper.extractFaceBitmap(face, bitmap)
 
@@ -294,14 +296,9 @@ class FaceScannerViewModel @Inject constructor(
                     return@launch
                 }
 
-                // DEBUG: Log face bitmap info setelah ekstraksi
-                println("DEBUG: Extracted face bitmap size: ${faceBitmap.width}x${faceBitmap.height}")
-
                 // Verifikasi wajah menggunakan VerifyFaceUseCase
-                println("DEBUG: Starting face verification...")
                 verifyFaceUseCase(faceBitmap)
                     .onSuccess { isMatch ->
-                        println("DEBUG: Face verification completed. Match: $isMatch")
                         if (isMatch) {
                             handleVerificationSuccess()
                         } else {
@@ -309,14 +306,12 @@ class FaceScannerViewModel @Inject constructor(
                         }
                     }
                     .onFailure { exception ->
-                        println("DEBUG: Face verification failed with exception: ${exception.message}")
                         handleVerificationError(
                             exception.message ?: "Gagal memverifikasi wajah. Silakan coba lagi."
                         )
                     }
 
             } catch (e: Exception) {
-                println("DEBUG: Exception in proceedWithFaceVerification: ${e.message}")
                 handleVerificationError("Terjadi kesalahan: ${e.message}")
             }
         }
@@ -409,18 +404,6 @@ class FaceScannerViewModel @Inject constructor(
             showCountdown = false,
             timeRemaining = 0
         )
-    }
-
-    /**
-     * Reset scanner untuk mencoba lagi
-     */
-    fun resetScanner() {
-        timeoutJob?.cancel()
-        livenessJob?.cancel()
-        currentDetectedFace = null
-        currentImageBitmap = null
-
-        initializeScanner()
     }
 
     /**

@@ -25,6 +25,7 @@ enum class LivenessResult {
 /**
  * Helper class for ML Kit Face Detection operations
  * Handles face detection, liveness verification (blink/smile), and face extraction
+ * FIXED: Added proper reinitialization support
  */
 @Singleton
 class FaceDetectorHelper @Inject constructor() {
@@ -36,11 +37,25 @@ class FaceDetectorHelper @Inject constructor() {
 
         private const val SMILE_HIGH_THRESHOLD = 0.7f // Original threshold for SUCCESS
         private const val SMILE_MEDIUM_THRESHOLD = 0.4f // Medium threshold for IN_PROGRESS
-        private const val SMILE_LOW_THRESHOLD = 0.2f   // Minimum threshold for any detection
     }
 
-    // ML Kit Face Detector with optimized settings
-    private val faceDetector: FaceDetector by lazy {
+    // PERBAIKAN: Buat detector nullable dan reinitializable
+    private var _faceDetector: FaceDetector? = null
+
+    // Property untuk mengakses detector yang selalu valid
+    private val faceDetector: FaceDetector
+        get() {
+            // Jika detector null atau sudah closed, buat yang baru
+            if (_faceDetector == null) {
+                _faceDetector = createNewDetector()
+            }
+            return _faceDetector!!
+        }
+
+    /**
+     * Create new ML Kit Face Detector instance
+     */
+    private fun createNewDetector(): FaceDetector {
         val options = FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
@@ -49,7 +64,20 @@ class FaceDetectorHelper @Inject constructor() {
             .enableTracking() // Enable face tracking for better performance
             .build()
 
-        FaceDetection.getClient(options)
+        return FaceDetection.getClient(options)
+    }
+
+    /**
+     * Force reinitialize detector - call this when reset is needed
+     */
+    fun reinitialize() {
+        try {
+            _faceDetector?.close()
+        } catch (e: Exception) {
+            // Silently handle close errors
+        }
+        _faceDetector = null
+        // Detector akan dibuat ulang saat pertama kali diakses
     }
 
     /**
@@ -63,36 +91,46 @@ class FaceDetectorHelper @Inject constructor() {
         if (mediaImage != null) {
             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
-            faceDetector.process(image)
-                .addOnSuccessListener { faces ->
-                    println("ML Kit face detection completed. Found ${faces.size} faces")
-                    if (faces.isNotEmpty()) {
-                        // Return the first (largest) detected face
-                        val largestFace =
-                            faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-                        if (largestFace != null) {
-                            println("Largest face found at: ${largestFace.boundingBox}")
-                            onResult(Result.success(largestFace))
+            try {
+                // Gunakan property yang akan otomatis reinitialize jika perlu
+                val detector = faceDetector
+
+                detector.process(image)
+                    .addOnSuccessListener { faces ->
+                        if (faces.isNotEmpty()) {
+                            // Return the first (largest) detected face
+                            val largestFace =
+                                faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
+                            if (largestFace != null) {
+                                onResult(Result.success(largestFace))
+                            } else {
+                                onResult(Result.failure(Exception("No valid face detected")))
+                            }
                         } else {
-                            println("No valid face detected despite faces list not empty")
-                            onResult(Result.failure(Exception("No valid face detected")))
+                            onResult(Result.failure(Exception("No faces detected")))
                         }
-                    } else {
-                        println("No faces detected in current frame")
-                        onResult(Result.failure(Exception("No faces detected")))
                     }
+                    .addOnFailureListener { exception ->
+                        // Jika detector closed, coba reinitialize
+                        if (exception.message?.contains("closed") == true) {
+                            reinitialize()
+                            onResult(Result.failure(Exception("Detector was closed, please try again")))
+                        } else {
+                            onResult(Result.failure(exception))
+                        }
+                    }
+                    .addOnCompleteListener {
+                        // Clean up resources - ALWAYS close imageProxy here
+                        imageProxy.close()
+                    }
+            } catch (e: Exception) {
+                if (e.message?.contains("closed") == true) {
+                    reinitialize()
                 }
-                .addOnFailureListener { exception ->
-                    println("ML Kit face detection failed: ${exception.message}")
-                    onResult(Result.failure(exception))
-                }
-                .addOnCompleteListener {
-                    // Clean up resources - ALWAYS close imageProxy here
-                    imageProxy.close()
-                    println("ImageProxy closed after ML Kit processing")
-                }
+                onResult(Result.failure(e))
+                imageProxy.close()
+            }
         } else {
-            println("MediaImage is null in imageProxy")
             onResult(Result.failure(Exception("Image is null")))
             imageProxy.close()
         }
@@ -110,27 +148,21 @@ class FaceDetectorHelper @Inject constructor() {
         return if (leftEyeOpenProbability != null && rightEyeOpenProbability != null) {
             val avgEyeOpenProbability = (leftEyeOpenProbability + rightEyeOpenProbability) / 2f
 
-            println("DEBUG: Blink detection - Left eye: $leftEyeOpenProbability, Right eye: $rightEyeOpenProbability, Average: $avgEyeOpenProbability")
-
             when {
                 // SUCCESS: Both eyes clearly closed (blinking)
                 leftEyeOpenProbability < BLINK_HIGH_THRESHOLD && rightEyeOpenProbability < BLINK_HIGH_THRESHOLD -> {
-                    println("DEBUG: Blink SUCCESS - Both eyes closed")
                     LivenessResult.SUCCESS
                 }
                 // IN_PROGRESS: One eye closed or both eyes partially closed
                 avgEyeOpenProbability < BLINK_LOW_THRESHOLD -> {
-                    println("DEBUG: Blink IN_PROGRESS - Getting closer to blinking")
                     LivenessResult.IN_PROGRESS
                 }
                 // FAILURE: Eyes too open
                 else -> {
-                    println("DEBUG: Blink FAILURE - Eyes still open")
                     LivenessResult.FAILURE
                 }
             }
         } else {
-            println("DEBUG: Blink FAILURE - Eye probabilities not available")
             LivenessResult.FAILURE // Cannot determine blink if probabilities are not available
         }
     }
@@ -144,27 +176,21 @@ class FaceDetectorHelper @Inject constructor() {
         val smilingProbability = face.smilingProbability
 
         return if (smilingProbability != null) {
-            println("DEBUG: Smile detection - Probability: $smilingProbability")
-
             when {
                 // SUCCESS: Strong smile detected
                 smilingProbability > SMILE_HIGH_THRESHOLD -> {
-                    println("DEBUG: Smile SUCCESS - Strong smile detected")
                     LivenessResult.SUCCESS
                 }
                 // IN_PROGRESS: Moderate smile, encourage user to smile more
                 smilingProbability > SMILE_MEDIUM_THRESHOLD -> {
-                    println("DEBUG: Smile IN_PROGRESS - Moderate smile, needs more")
                     LivenessResult.IN_PROGRESS
                 }
                 // FAILURE: Little to no smile
                 else -> {
-                    println("DEBUG: Smile FAILURE - Not smiling enough")
                     LivenessResult.FAILURE
                 }
             }
         } else {
-            println("DEBUG: Smile FAILURE - Smile probability not available")
             LivenessResult.FAILURE // Cannot determine smile if probability is not available
         }
     }
@@ -179,10 +205,6 @@ class FaceDetectorHelper @Inject constructor() {
         return try {
             val boundingBox = face.boundingBox
 
-            // DEBUG: Log original face detection info
-            println("DEBUG FaceDetectorHelper: Original bounding box: $boundingBox")
-            println("DEBUG FaceDetectorHelper: Source image size: ${image.width}x${image.height}")
-
             // Add padding around the face for better context (10% on each side)
             val padding = (boundingBox.width() * 0.1f).toInt()
 
@@ -192,19 +214,14 @@ class FaceDetectorHelper @Inject constructor() {
             val right = minOf(image.width, boundingBox.right + padding)
             val bottom = minOf(image.height, boundingBox.bottom + padding)
 
-            println("DEBUG FaceDetectorHelper: Padded coordinates - left:$left, top:$top, right:$right, bottom:$bottom")
-            println("DEBUG FaceDetectorHelper: Crop dimensions: ${right - left}x${bottom - top}")
-
             // Validate that we have a valid crop area
             if (left < right && top < bottom) {
                 // Extract face with padding
                 val croppedBitmap =
                     Bitmap.createBitmap(image, left, top, right - left, bottom - top)
-                println("DEBUG FaceDetectorHelper: Cropped bitmap size: ${croppedBitmap.width}x${croppedBitmap.height}")
 
-                // KUNCI PERBAIKAN: Standardisasi ukuran dan format
+                // Standardisasi ukuran dan format
                 val standardizedBitmap = standardizeFaceBitmap(croppedBitmap)
-                println("DEBUG FaceDetectorHelper: Standardized bitmap size: ${standardizedBitmap.width}x${standardizedBitmap.height}")
 
                 // Clean up intermediate bitmap
                 if (croppedBitmap != standardizedBitmap) {
@@ -213,12 +230,9 @@ class FaceDetectorHelper @Inject constructor() {
 
                 standardizedBitmap
             } else {
-                println("DEBUG FaceDetectorHelper: Invalid crop area - left:$left >= right:$right or top:$top >= bottom:$bottom")
                 null
             }
         } catch (e: Exception) {
-            println("DEBUG FaceDetectorHelper: Error extracting face bitmap: ${e.message}")
-            e.printStackTrace()
             null
         }
     }
@@ -236,7 +250,6 @@ class FaceDetectorHelper @Inject constructor() {
             // Resize to standard dimensions with high quality
             Bitmap.createScaledBitmap(faceBitmap, standardWidth, standardHeight, true)
         } catch (e: Exception) {
-            println("Error standardizing face bitmap: ${e.message}")
             faceBitmap // Return original if standardization fails
         }
     }
@@ -277,8 +290,13 @@ class FaceDetectorHelper @Inject constructor() {
 
     /**
      * Clean up resources when done
+     * PERBAIKAN: Tambahkan null check
      */
     fun release() {
-        faceDetector.close()
+        try {
+            _faceDetector?.close()
+            _faceDetector = null
+        } catch (e: Exception) {
+        }
     }
 }

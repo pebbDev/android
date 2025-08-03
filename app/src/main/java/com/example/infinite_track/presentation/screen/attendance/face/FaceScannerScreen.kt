@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -85,9 +84,10 @@ fun FaceScannerScreen(
     // Camera executor
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    // Reset the scanner and request camera permission when screen becomes visible
+    // KUNCI PERBAIKAN: Reset scanner setiap kali screen muncul
+    // Ini akan memastikan ViewModel selalu dalam state fresh
     LaunchedEffect(Unit) {
-        // First, reset the scanner to ensure fresh state
+        // Reset scanner terlebih dahulu untuk memastikan state bersih
         viewModel.initializeScanner()
 
         // Then request camera permission if not granted
@@ -100,7 +100,7 @@ fun FaceScannerScreen(
     LaunchedEffect(uiState.livenessState) {
         when (uiState.livenessState) {
             LivenessState.SUCCESS -> {
-                // FIXED: Send success result and navigate back to proceed with attendance
+                // Send success result and navigate back to proceed with attendance
                 navController.previousBackStackEntry?.savedStateHandle?.set(
                     "face_verification_result",
                     true
@@ -120,7 +120,6 @@ fun FaceScannerScreen(
             // FAILURE stays on screen to allow retry - no automatic navigation
             LivenessState.FAILURE -> {
                 // Stay on screen, show retry button - user can try again
-                println("DEBUG: Face verification failed - staying on screen for retry")
             }
 
             else -> {
@@ -194,14 +193,7 @@ private fun CameraContent(
     onRetryClick: () -> Unit,
     onCloseClick: () -> Unit
 ) {
-    val density = LocalDensity.current
     var previewSize by remember { mutableStateOf<androidx.compose.ui.geometry.Size?>(null) }
-
-    // Get screen dimensions for proper scaling
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val screenHeight = configuration.screenHeightDp.dp
-
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -211,7 +203,6 @@ private fun CameraContent(
                     width = size.width.toFloat(),
                     height = size.height.toFloat()
                 )
-                println("Preview size captured: ${size.width}x${size.height}")
             }
     ) {
         // Layer 1: Camera Preview with proper CameraX integration
@@ -296,7 +287,7 @@ private fun CameraPreview(
         }
     }
 
-    // Use LaunchedEffect instead of AndroidView update to prevent rebinding
+    // Camera binding setup
     LaunchedEffect(Unit) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
@@ -323,9 +314,10 @@ private fun CameraPreview(
                             val bitmap = imageProxyToBitmap(imageProxy)
                             if (bitmap != null) {
                                 onImageAnalysis(imageProxy, bitmap)
+                            } else {
+                                imageProxy.close()
                             }
                         } catch (e: Exception) {
-                            println("Error in image analysis: ${e.message}")
                             imageProxy.close()
                         }
                     }
@@ -334,7 +326,7 @@ private fun CameraPreview(
             // Select front camera
             val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
-            // Bind use cases to camera (only once)
+            // Bind use cases to camera
             cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 cameraSelector,
@@ -342,11 +334,14 @@ private fun CameraPreview(
                 imageAnalysis
             )
 
-            println("Camera bound successfully with preview and image analysis")
-
         } catch (exc: Exception) {
-            println("Camera binding failed: ${exc.message}")
             exc.printStackTrace()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            // Camera cleanup handled by lifecycle
         }
     }
 
@@ -506,10 +501,9 @@ private fun InstructionSection(
     }
 }
 
-// Helper function to convert ImageProxy to Bitmap - FIXED VERSION
+// Helper function to convert ImageProxy to Bitmap
 private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
     return try {
-        // DON'T close imageProxy here - let FaceDetectorHelper handle it
         // Get the YUV_420_888 image from camera
         val image = imageProxy.image
         if (image != null) {
@@ -550,19 +544,13 @@ private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
 
             // Close the output stream
             out.close()
-
-            println("Successfully converted ImageProxy to Bitmap: ${bitmap?.width}x${bitmap?.height}")
             bitmap
         } else {
-            println("ImageProxy.image is null")
             null
         }
     } catch (e: Exception) {
-        println("Error converting ImageProxy to Bitmap: ${e.message}")
-        e.printStackTrace()
         null
     }
-    // DON'T close imageProxy here - FaceDetectorHelper will close it
 }
 
 // Permission UI Components
