@@ -782,7 +782,6 @@ class AttendanceViewModel @Inject constructor(
                 checkOutUseCase().onSuccess { activeSession ->
                     Log.d(TAG, "Check-out successful: $activeSession")
 
-                    // Refresh today's status to get updated data
                     fetchTodayStatus()
 
                     // Send success event to UI with appropriate message
@@ -956,7 +955,6 @@ class AttendanceViewModel @Inject constructor(
      * Enter Pick on Map mode - enables crosshair and map interaction
      */
     fun onEnterPickOnMapMode() {
-        Log.d(TAG, "Entering Pick on Map mode")
         _uiState.value = _uiState.value.copy(
             isPickOnMapModeActive = true,
             pickedLocation = null // Reset any previously picked location
@@ -1013,11 +1011,9 @@ class AttendanceViewModel @Inject constructor(
                 }.onFailure { exception ->
                     Log.e(TAG, "Reverse geocoding failed", exception)
 
-                    // Don't create fallback location, instead show error and keep picked location null
                     _uiState.value = _uiState.value.copy(
                         pickedLocation = null, // Ensure picked location is null
-                        selectedWfaLocation = null, // Clear any selected WFA location
-                        // Show error message in BottomSheet
+                        selectedWfaLocation = null,
                         error = "Gagal mendapatkan detail lokasi. Periksa koneksi Anda."
                     )
                 }
@@ -1035,7 +1031,5 @@ class AttendanceViewModel @Inject constructor(
         _uiState.value.targetLocation?.let { location ->
             geofenceManager.removeGeofence(location.locationId.toString())
         }
-
-        Log.d(TAG, "ViewModel cleared, display location tracking stopped")
     }
 }

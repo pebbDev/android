@@ -33,6 +33,7 @@ import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Blue_Accent_500
 import com.example.infinite_track.presentation.theme.Orange_500
 import com.example.infinite_track.presentation.theme.Red_Error
+import kotlin.math.max
 
 // Warna untuk berbagai status liveness menggunakan Color.kt
 val vibrantBlue = Blue_500           // Detecting - menggunakan primary blue
@@ -48,6 +49,7 @@ val vibrantOrange = Orange_500       // Liveness detected - menggunakan orange
  * @param strokeWidth Lebar garis sudut.
  * @param previewSize Size of the camera preview for coordinate scaling
  * @param imageSize Size of the camera image for coordinate scaling
+ * @param isFrontCamera Apakah kamera depan digunakan (untuk mirroring horizontal)
  */
 @Composable
 fun FaceBoundingBox(
@@ -56,7 +58,8 @@ fun FaceBoundingBox(
     livenessState: LivenessState,
     strokeWidth: Dp = 3.dp,
     previewSize: Size? = null,
-    imageSize: Size? = null
+    imageSize: Size? = null,
+    isFrontCamera: Boolean = true
 ) {
     // State untuk animasi saat boundingBox null (menghilang) atau muncul.
     val alpha by animateFloatAsState(
@@ -65,44 +68,50 @@ fun FaceBoundingBox(
         label = "alpha"
     )
 
-    // Calculate scaled bounding box with PROPER coordinate transformation for accurate face tracking
-    val scaledBoundingBox = if (boundingBox != null && previewSize != null && imageSize != null) {
-        // Calculate scale factors between image and preview
-        val scaleX = previewSize.width / imageSize.width
-        val scaleY = previewSize.height / imageSize.height
+    // Hitung mapping bounding box dari koordinat image ke preview menggunakan center-crop scaling
+    val mappedBoundingBox = if (boundingBox != null && previewSize != null && imageSize != null) {
+        // Center-crop: skala yang memenuhi preview dan mungkin terpotong di salah satu sisi
+        val scale = max(previewSize.width / imageSize.width, previewSize.height / imageSize.height)
+        val scaledImageWidth = imageSize.width * scale
+        val scaledImageHeight = imageSize.height * scale
 
-        // Apply coordinate transformation for front camera
-        // Front camera is mirrored, so we need to flip X coordinates properly
-        val mirroredRect = Rect(
-            left = imageSize.width - boundingBox.right,
-            top = boundingBox.top,
-            right = imageSize.width - boundingBox.left,
-            bottom = boundingBox.bottom
-        )
+        // Offset agar gambar yang sudah diskalakan berada di tengah preview
+        val offsetX = (previewSize.width - scaledImageWidth) / 2f
+        val offsetY = (previewSize.height - scaledImageHeight) / 2f
 
-        // Scale the mirrored coordinates to preview size
-        val transformedRect = Rect(
-            left = mirroredRect.left * scaleX,
-            top = mirroredRect.top * scaleY,
-            right = mirroredRect.right * scaleX,
-            bottom = mirroredRect.bottom * scaleY
-        )
+        // Peta rect ke koordinat preview
+        val left = offsetX + boundingBox.left * scale
+        val top = offsetY + boundingBox.top * scale
+        val right = offsetX + boundingBox.right * scale
+        val bottom = offsetY + boundingBox.bottom * scale
 
-        // Ensure the bounding box is within preview bounds and return valid rect
+        // Opsi mirroring horizontal untuk kamera depan
+        val rectInPreview = if (isFrontCamera) {
+            Rect(
+                left = previewSize.width - right,
+                top = top,
+                right = previewSize.width - left,
+                bottom = bottom
+            )
+        } else {
+            Rect(left, top, right, bottom)
+        }
+
+        // Jaga agar tetap dalam batas preview
         Rect(
-            left = transformedRect.left.coerceIn(0f, previewSize.width),
-            top = transformedRect.top.coerceIn(0f, previewSize.height),
-            right = transformedRect.right.coerceIn(0f, previewSize.width),
-            bottom = transformedRect.bottom.coerceIn(0f, previewSize.height)
+            left = rectInPreview.left.coerceIn(0f, previewSize.width),
+            top = rectInPreview.top.coerceIn(0f, previewSize.height),
+            right = rectInPreview.right.coerceIn(0f, previewSize.width),
+            bottom = rectInPreview.bottom.coerceIn(0f, previewSize.height)
         )
     } else {
-        // Fallback to original bounding box if scaling data is not available
+        // Fallback ke rect asli bila data scaling tidak tersedia
         boundingBox
     }
 
     // State untuk animasi posisi dan ukuran dengan responsif tracking mengikuti wajah
     val animatedBoundingBox by animateRectAsState(
-        targetValue = scaledBoundingBox ?: Rect.Zero,
+        targetValue = mappedBoundingBox ?: Rect.Zero,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium
