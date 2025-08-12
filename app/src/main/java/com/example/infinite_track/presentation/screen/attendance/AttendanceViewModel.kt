@@ -617,28 +617,71 @@ class AttendanceViewModel @Inject constructor(
      * Handle attendance button click - navigates to face scanner
      * FIXED: Uses new Screen.FaceScanner.createRoute with action parameter
      */
+//    fun onAttendanceButtonClicked() {
+//        // Use the reactive StateFlow value instead of recalculating
+//        val isEnabled = _uiState.value.isButtonEnabled
+//        val buttonText = _uiState.value.buttonText
+//
+//        if (!isEnabled) {
+//            Log.d(TAG, "Attendance button clicked but not enabled (geofence or server restriction)")
+//            return
+//        }
+//
+//        val isCheckIn = buttonText.contains("Check-in", ignoreCase = true)
+//        val action = if (isCheckIn) "checkin" else "checkout"
+//
+//        Log.d(TAG, "Attendance button clicked - $action")
+//
+//        // Update isCheckInMode state before navigation
+//        _uiState.value = _uiState.value.copy(isCheckInMode = isCheckIn)
+//
+//        viewModelScope.launch {
+//            _uiState.value = _uiState.value.copy(
+//                navigationTarget = NavigationTarget.FaceScanner(isCheckIn)
+//            )
+//        }
+//    }
+
+    /**
+     * Handle attendance button click - triggers face verification then check-in/check-out
+     * FIXED: Prevents double response/record by controlling the flow properly and removing duplicate
+     */
     fun onAttendanceButtonClicked() {
-        // Use the reactive StateFlow value instead of recalculating
-        val isEnabled = _uiState.value.isButtonEnabled
-        val buttonText = _uiState.value.buttonText
-
-        if (!isEnabled) {
-            Log.d(TAG, "Attendance button clicked but not enabled (geofence or server restriction)")
-            return
-        }
-
-        val isCheckIn = buttonText.contains("Check-in", ignoreCase = true)
-        val action = if (isCheckIn) "checkin" else "checkout"
-
-        Log.d(TAG, "Attendance button clicked - $action")
-
-        // Update isCheckInMode state before navigation
-        _uiState.value = _uiState.value.copy(isCheckInMode = isCheckIn)
-
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                navigationTarget = NavigationTarget.FaceScanner(isCheckIn)
-            )
+            try {
+                Log.d(TAG, "Attendance button clicked")
+
+                // Prevent multiple clicks by checking if already processing
+                if (_uiState.value.activeDialog != null) {
+                    Log.w(TAG, "Attendance action already in progress, ignoring click")
+                    return@launch
+                }
+
+                // Check if button is enabled
+                if (!_uiState.value.isButtonEnabled) {
+                    Log.w(TAG, "Attendance button is disabled, ignoring click")
+                    return@launch
+                }
+
+                // Clear any previous dialogs
+                _uiState.value = _uiState.value.copy(activeDialog = null)
+
+                // Determine if this is check-in or check-out based on current state
+                val isCheckInMode = _uiState.value.isCheckInMode
+
+                Log.d(TAG, "Initiating ${if (isCheckInMode) "check-in" else "check-out"} process with face verification")
+
+                // Navigate to face scanner for verification first
+                _uiState.value = _uiState.value.copy(
+                    navigationTarget = NavigationTarget.FaceScanner(isCheckIn = isCheckInMode)
+                )
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in onAttendanceButtonClicked", e)
+                _uiState.value = _uiState.value.copy(
+                    activeDialog = DialogState.Error("Error initiating attendance: ${e.message}")
+                )
+            }
         }
     }
 
