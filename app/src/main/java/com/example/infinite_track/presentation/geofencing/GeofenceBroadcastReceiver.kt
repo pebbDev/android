@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 /**
  * BroadcastReceiver untuk menangani events geofence secara cerdas
@@ -110,9 +111,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 return
             }
 
-            // Generate timestamp in ISO format
-            val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-                .format(Date())
+            // Generate timestamp in ISO 8601 UTC format
+            val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val timestamp = formatter.format(Date())
 
             // Show immediate notification to user
             val locationName = geofence.requestId // Use requestId as location name
@@ -126,7 +129,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 .build()
 
             // Create constraints - require network connection
-            val constraints = Constraints.Builder()
+            val constraints = androidx.work.Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 

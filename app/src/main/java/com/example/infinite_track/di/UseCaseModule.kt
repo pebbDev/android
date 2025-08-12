@@ -1,6 +1,7 @@
 package com.example.infinite_track.di
 
 import com.example.infinite_track.data.face.FaceProcessor
+import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
@@ -177,9 +178,10 @@ object UseCaseModule {
     fun provideCheckInUseCase(
         attendanceRepository: AttendanceRepository,
         getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
-        geofenceManager: GeofenceManager
+        geofenceManager: GeofenceManager,
+        attendancePreference: AttendancePreference
     ): CheckInUseCase {
-        return CheckInUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager)
+        return CheckInUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager, attendancePreference)
     }
 
     // Provide the Check Out Use Case
@@ -187,8 +189,9 @@ object UseCaseModule {
     fun provideCheckOutUseCase(
         attendanceRepository: AttendanceRepository,
         getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
-        geofenceManager: GeofenceManager
+        geofenceManager: GeofenceManager,
+        attendancePreference: AttendancePreference
     ): CheckOutUseCase {
-        return CheckOutUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager)
+        return CheckOutUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager, attendancePreference)
     }
 }

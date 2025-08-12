@@ -1,5 +1,6 @@
 package com.example.infinite_track.domain.use_case.attendance
 
+import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.repository.AttendanceRepository
@@ -15,7 +16,8 @@ import javax.inject.Inject
 class CheckInUseCase @Inject constructor(
     private val attendanceRepository: AttendanceRepository,
     private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
-    private val geofenceManager: GeofenceManager
+    private val geofenceManager: GeofenceManager,
+    private val attendancePreference: AttendancePreference
 ) {
     /**
      * Performs check-in operation using real-time GPS coordinates
@@ -29,7 +31,7 @@ class CheckInUseCase @Inject constructor(
     ): Result<ActiveAttendanceSession> {
         return try {
             // Step 1: Get current real-time GPS coordinates
-            val coordinatesResult = getCurrentCoordinatesUseCase()
+            val coordinatesResult = getCurrentCoordinatesUseCase(useRealTimeGPS = true)
 
             if (coordinatesResult.isFailure) {
                 return Result.failure(
@@ -53,15 +55,24 @@ class CheckInUseCase @Inject constructor(
             // Step 4: If check-in successful, setup geofence monitoring using provided target location
             if (checkInResult.isSuccess) {
                 try {
+                    val requestId = if (targetLocation.locationId != 0) {
+                        targetLocation.locationId.toString()
+                    } else {
+                        // WFA: build a stable id from coordinates
+                        val lat = String.format("%.6f", targetLocation.latitude)
+                        val lng = String.format("%.6f", targetLocation.longitude)
+                        "wfa:$lat,$lng"
+                    }
+
                     geofenceManager.addGeofence(
-                        id = targetLocation.locationId.toString(),
+                        id = requestId,
                         latitude = targetLocation.latitude,
                         longitude = targetLocation.longitude,
                         radius = targetLocation.radius.toFloat()
                     )
                     android.util.Log.d(
                         "CheckInUseCase",
-                        "Geofence monitoring started for location ${targetLocation.locationId}"
+                        "Geofence monitoring started for requestId $requestId"
                     )
                 } catch (e: Exception) {
                     android.util.Log.e("CheckInUseCase", "Failed to setup geofence monitoring", e)

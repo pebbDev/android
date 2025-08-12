@@ -2,19 +2,28 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Izin Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Izin Lokasi - Urutan penting! -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <!-- Background Location - Support sampai Android terbaru -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Izin Kamera -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
-
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Izin Notifikasi dan Storage -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android:permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <application
         android:name=".InfiniteTrackApplication"
@@ -29,19 +38,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Infinite_Track"
         tools:targetApi="31">
+
+        <!-- BroadcastReceiver untuk Geofencing -->
         <receiver
             android:name=".presentation.geofencing.GeofenceBroadcastReceiver"
             android:enabled="true"
-            android:exported="true"></receiver>
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.android.gms.location.Geofence" />
+            </intent-filter>
+        </receiver>
 
-<!--        <service-->
-<!--            android:name=".presentation.fcm.InfiniteTrackFCMService"-->
-<!--            android:exported="false">-->
-<!--            <intent-filter>-->
-<!--                <action android:name="com.google.firebase.MESSAGING_EVENT" />-->
-<!--            </intent-filter>-->
-<!--        </service>-->
-
+        <!-- API Keys -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDoyWQjJqxgX5T-_ZX0Q3f553hOxaCEw1w" />

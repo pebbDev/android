@@ -1,9 +1,11 @@
 package com.example.infinite_track.domain.use_case.attendance
 
+import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
+import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 
 /**
@@ -13,7 +15,8 @@ import javax.inject.Inject
 class CheckOutUseCase @Inject constructor(
     private val attendanceRepository: AttendanceRepository,
     private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
-    private val geofenceManager: GeofenceManager
+    private val geofenceManager: GeofenceManager,
+    private val attendancePreference: AttendancePreference
 ) {
     /**
      * Performs check-out operation
@@ -26,31 +29,17 @@ class CheckOutUseCase @Inject constructor(
             val attendanceId = attendanceRepository.getActiveAttendanceId()
                 ?: return Result.failure(Exception("No active attendance session found"))
 
-            // 2. Get current location ID from today's status (needed for geofence removal)
-            val todayStatusResult = attendanceRepository.getTodayStatus()
-            if (todayStatusResult.isFailure) {
-                return Result.failure(
-                    todayStatusResult.exceptionOrNull()
-                        ?: Exception("Failed to get today's status")
-                )
-            }
-
-            val todayStatus = todayStatusResult.getOrNull()!!
-            val locationId = todayStatus.activeLocation?.locationId
-                ?: return Result.failure(Exception("No location information found"))
-
-            // 3. Get current real-time GPS coordinates
-            val coordinatesResult = getCurrentCoordinatesUseCase()
+            // 2. Get current real-time GPS coordinates (strict, no DB fallback)
+            val coordinatesResult = getCurrentCoordinatesUseCase(useRealTimeGPS = true)
             if (coordinatesResult.isFailure) {
                 return Result.failure(
                     coordinatesResult.exceptionOrNull()
                         ?: Exception("Failed to get current location")
                 )
             }
-
             val currentCoordinates = coordinatesResult.getOrNull()!!
 
-            // 4. Call repository to perform check-out
+            // 3. Call repository to perform check-out
             // Backend will handle location validation
             val checkOutResult = attendanceRepository.checkOut(
                 attendanceId = attendanceId,
@@ -58,13 +47,18 @@ class CheckOutUseCase @Inject constructor(
                 longitude = currentCoordinates.second
             )
 
-            // 5. If check-out successful, remove geofence
+            // 4. If check-out successful, remove geofence using stored request ID
             if (checkOutResult.isSuccess) {
                 try {
-                    geofenceManager.removeGeofence(locationId.toString())
+                    val lastRequestId = attendancePreference.getLastGeofenceRequestId().firstOrNull()
+                    if (lastRequestId != null) {
+                        geofenceManager.removeGeofence(lastRequestId)
+                    } else {
+                        geofenceManager.removeAllGeofences()
+                    }
                     android.util.Log.d(
                         "CheckOutUseCase",
-                        "Geofence removed for location $locationId"
+                        "Geofence removed using stored request ID: ${lastRequestId ?: "ALL"}"
                     )
                 } catch (e: Exception) {
                     android.util.Log.e("CheckOutUseCase", "Failed to remove geofence", e)

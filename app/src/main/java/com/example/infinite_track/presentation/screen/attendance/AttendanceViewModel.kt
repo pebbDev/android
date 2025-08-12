@@ -1027,9 +1027,6 @@ class AttendanceViewModel @Inject constructor(
         super.onCleared()
         displayLocationJob?.cancel()
 
-        // Clean up geofence when ViewModel is cleared
-        _uiState.value.targetLocation?.let { location ->
-            geofenceManager.removeGeofence(location.locationId.toString())
-        }
+        // Removed onCleared geofence removal to keep geofence active until explicit checkout
     }
 }

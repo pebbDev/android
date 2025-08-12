@@ -20,9 +20,8 @@ class InfiniteTrackApplication : Application(), Configuration.Provider {
         NotificationHelper.createNotificationChannel(this)
     }
 
-    override fun getWorkManagerConfiguration(): Configuration {
-        return Configuration.Builder()
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .build()
-    }
 }
