@@ -13,6 +13,8 @@ import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.screen.splash.SplashNavigationState
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.utils.LocationPermissionHelper
+import com.example.infinite_track.utils.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -29,6 +31,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionManager: SessionManager
 
+    // Location permission helper untuk geofencing
+    private lateinit var locationPermissionHelper: LocationPermissionHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen BEFORE super.onCreate()
         val splashScreen = installSplashScreen()
@@ -40,11 +45,22 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Initialize location permission helper
+        locationPermissionHelper = LocationPermissionHelper(this) { result ->
+            Log.d("MainActivity", "Permission result: $result")
+            // Permission result akan dihandle di AttendanceViewModel
+        }
+
+        // Create notification channel untuk geofencing
+        NotificationHelper.createNotificationChannel(this)
+
         setContent {
             Infinite_TrackTheme {
                 InfiniteTrackApp(
                     appNavigator = appNavigator,
-                    sessionManager = sessionManager
+                    sessionManager = sessionManager,
+                    locationPermissionHelper = locationPermissionHelper
                 )
             }
         }
