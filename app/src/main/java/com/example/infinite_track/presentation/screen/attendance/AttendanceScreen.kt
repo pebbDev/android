@@ -82,7 +82,6 @@ fun AttendanceScreen(
 ) {
     val context = LocalContext.current
     var mapViewInstance by remember { mutableStateOf<MapView?>(null) }
-    val scope = rememberCoroutineScope()
 
     // --- PERMISSION HANDLING ---
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

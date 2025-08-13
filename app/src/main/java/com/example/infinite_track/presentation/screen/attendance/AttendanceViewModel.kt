@@ -279,9 +279,10 @@ class AttendanceViewModel @Inject constructor(
                 Triple("Check-in di sini", true, true)
             }
 
-            // PRIORITAS 2: Sudah check-in, bisa check-out (checked_in_at != null && can_check_out == true)
+            // PRIORITAS 2: Sudah check-in, bisa check-out (can_check_out == true)
+            // Kondisi `checkedInAt != null` implisit karena sudah lolos dari kondisi pertama.
             // Selalu aktif - biarkan backend yang validasi lokasi
-            todayStatus.checkedInAt != null && todayStatus.canCheckOut -> {
+            todayStatus.canCheckOut -> {
                 Triple("Check-out di sini", true, false)
             }
 
