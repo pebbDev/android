@@ -96,7 +96,7 @@ fun AttendanceMap(
                             onCameraIdle(centerPoint)
                             android.util.Log.d(
                                 "AttendanceMap",
-                                "Camera idle detected: ${centerPoint.latitude()}, ${center.longitude()}"
+                                "Camera idle detected: ${centerPoint.latitude()}, ${centerPoint.longitude()}"
                             )
                         }
                     }, cameraIdleDelay)

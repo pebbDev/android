@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import com.example.infinite_track.utils.PermissionUtils
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
