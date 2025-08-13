@@ -126,11 +126,19 @@ class GeofenceManager @Inject constructor(
                             .setRequestId(requestId)
                             .setCircularRegion(latitude, longitude, safeRadius)
                             .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
+                            .setTransitionTypes(
+                                Geofence.GEOFENCE_TRANSITION_ENTER or
+                                    Geofence.GEOFENCE_TRANSITION_EXIT or
+                                    Geofence.GEOFENCE_TRANSITION_DWELL
+                            )
+                            .setLoiteringDelay(30_000) // 30s dwell to reduce churn
                             .build()
 
                         val geofencingRequest = GeofencingRequest.Builder()
-                            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                            .setInitialTrigger(
+                                GeofencingRequest.INITIAL_TRIGGER_ENTER or
+                                    GeofencingRequest.INITIAL_TRIGGER_DWELL
+                            )
                             .addGeofence(geofence)
                             .build()
 
@@ -142,6 +150,13 @@ class GeofenceManager @Inject constructor(
                                 )
                                 ioScope.launch {
                                     attendancePreference.saveLastGeofenceRequestId(requestId)
+                                    // Persist params for boot re-registration
+                                    attendancePreference.saveLastGeofenceParameters(
+                                        requestId = requestId,
+                                        latitude = latitude,
+                                        longitude = longitude,
+                                        radius = safeRadius.toInt()
+                                    )
                                 }
                             }
                             addOnFailureListener { exception ->

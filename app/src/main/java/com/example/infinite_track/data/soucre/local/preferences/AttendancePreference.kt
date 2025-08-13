@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,6 +27,9 @@ class AttendancePreference @Inject constructor(
         private val ACTIVE_ATTENDANCE_ID_KEY = intPreferencesKey("active_attendance_id")
         private val IS_INSIDE_GEOFENCE_KEY = booleanPreferencesKey("is_inside_geofence")
         private val LAST_GEOFENCE_REQUEST_ID_KEY = stringPreferencesKey("last_geofence_request_id")
+        private val LAST_GEOFENCE_LAT_KEY = stringPreferencesKey("last_geofence_lat")
+        private val LAST_GEOFENCE_LNG_KEY = stringPreferencesKey("last_geofence_lng")
+        private val LAST_GEOFENCE_RADIUS_KEY = intPreferencesKey("last_geofence_radius")
     }
 
     /**
@@ -97,6 +101,39 @@ class AttendancePreference @Inject constructor(
     suspend fun setUserInsideGeofence(isInside: Boolean) {
         dataStore.edit { preferences ->
             preferences[IS_INSIDE_GEOFENCE_KEY] = isInside
+        }
+    }
+
+    /**
+     * Persist last geofence parameters for re-registration after reboot
+     */
+    suspend fun saveLastGeofenceParameters(
+        requestId: String,
+        latitude: Double,
+        longitude: Double,
+        radius: Int
+    ) {
+        dataStore.edit { preferences ->
+            preferences[LAST_GEOFENCE_REQUEST_ID_KEY] = requestId
+            preferences[LAST_GEOFENCE_LAT_KEY] = latitude.toString()
+            preferences[LAST_GEOFENCE_LNG_KEY] = longitude.toString()
+            preferences[LAST_GEOFENCE_RADIUS_KEY] = radius
+        }
+    }
+
+    /**
+     * Retrieve last geofence parameters if available
+     */
+    suspend fun getLastGeofenceParameters(): Triple<String, Triple<Double, Double>, Int>? {
+        val prefs = dataStore.data.firstOrNull()
+        return try {
+            val requestId = prefs?.get(LAST_GEOFENCE_REQUEST_ID_KEY) ?: return null
+            val lat = prefs.get(LAST_GEOFENCE_LAT_KEY)?.toDouble() ?: return null
+            val lng = prefs.get(LAST_GEOFENCE_LNG_KEY)?.toDouble() ?: return null
+            val radius = prefs.get(LAST_GEOFENCE_RADIUS_KEY) ?: return null
+            Triple(requestId, Triple(lat, lng), radius)
+        } catch (_: Exception) {
+            null
         }
     }
 }

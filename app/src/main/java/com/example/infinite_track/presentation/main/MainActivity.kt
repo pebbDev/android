@@ -1,12 +1,16 @@
 package com.example.infinite_track.presentation.main
 
+import android.Manifest
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.navigation.AppNavigator
@@ -29,6 +33,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionManager: SessionManager
 
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen BEFORE super.onCreate()
         val splashScreen = installSplashScreen()
@@ -40,6 +47,9 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        requestPostNotificationsIfNeeded()
+
         setContent {
             Infinite_TrackTheme {
                 InfiniteTrackApp(
@@ -65,6 +75,18 @@ class MainActivity : ComponentActivity() {
             // Gunakan AppNavigator untuk navigasi ke AttendanceScreen
             appNavigator.navigateToAttendance()
             Log.d("MainActivity", "Navigating to AttendanceScreen via AppNavigator")
+        }
+    }
+
+    private fun requestPostNotificationsIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
     }
 }

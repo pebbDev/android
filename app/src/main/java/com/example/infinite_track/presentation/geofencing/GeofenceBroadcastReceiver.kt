@@ -4,8 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -26,6 +28,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 
 /**
  * BroadcastReceiver untuk menangani events geofence secara cerdas
@@ -57,6 +60,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         val eventType = when (geofenceTransition) {
             Geofence.GEOFENCE_TRANSITION_ENTER -> "ENTER"
             Geofence.GEOFENCE_TRANSITION_EXIT -> "EXIT"
+            Geofence.GEOFENCE_TRANSITION_DWELL -> "DWELL"
             else -> {
                 Log.w(TAG, "Unknown geofence transition: $geofenceTransition")
                 return
@@ -88,7 +92,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
                 // Update geofence status in preferences based on event type
                 when (eventType) {
-                    "ENTER" -> attendancePreference.setUserInsideGeofence(true)
+                    "ENTER", "DWELL" -> attendancePreference.setUserInsideGeofence(true)
                     "EXIT" -> attendancePreference.setUserInsideGeofence(false)
                 }
 
@@ -105,11 +109,8 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     private fun processGeofenceEvent(context: Context, geofence: Geofence, eventType: String) {
         try {
-            // Extract location ID from geofence request ID
-            val locationId = geofence.requestId.toIntOrNull() ?: run {
-                Log.e(TAG, "Invalid geofence request ID: ${geofence.requestId}")
-                return
-            }
+            // Use requestId string directly to support non-numeric IDs
+            val requestId = geofence.requestId
 
             // Generate timestamp in ISO 8601 UTC format
             val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -118,34 +119,40 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             val timestamp = formatter.format(Date())
 
             // Show immediate notification to user
-            val locationName = geofence.requestId // Use requestId as location name
+            val locationName = requestId // Use requestId as location name
             NotificationHelper.showGeofenceNotification(context, eventType, locationName)
 
             // Prepare data for WorkManager
             val workData = Data.Builder()
                 .putString(LocationEventWorker.KEY_EVENT_TYPE, eventType)
-                .putInt(LocationEventWorker.KEY_LOCATION_ID, locationId)
+                .putString(LocationEventWorker.KEY_LOCATION_ID, requestId)
                 .putString(LocationEventWorker.KEY_EVENT_TIMESTAMP, timestamp)
                 .build()
 
             // Create constraints - require network connection
-            val constraints = androidx.work.Constraints.Builder()
+            val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
-            // Create work request
+            // Create work request with backoff policy
             val workRequest = OneTimeWorkRequestBuilder<LocationEventWorker>()
                 .setInputData(workData)
                 .setConstraints(constraints)
-                .addTag("location_event_$locationId")
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+                .addTag("location_event_$requestId")
                 .build()
 
-            // Enqueue work
-            WorkManager.getInstance(context).enqueue(workRequest)
+            // Enqueue unique work per requestId to prevent duplicates
+            WorkManager.getInstance(context)
+                .enqueueUniqueWork(
+                    "location_event_unique_$requestId",
+                    ExistingWorkPolicy.APPEND,
+                    workRequest
+                )
 
             Log.d(
                 TAG,
-                "Location event work enqueued: $eventType for location $locationId at $timestamp"
+                "Location event work enqueued: $eventType for requestId $requestId at $timestamp"
             )
 
         } catch (e: Exception) {
