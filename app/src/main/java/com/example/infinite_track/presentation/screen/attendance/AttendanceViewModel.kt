@@ -129,9 +129,8 @@ class AttendanceViewModel @Inject constructor(
         private const val DISPLAY_UPDATE_INTERVAL = 10000L // 10 seconds for UI updates
     }
 
-    init {
-        initializeData()
-    }
+    // init block is now empty. Initialization is triggered by the UI.
+    init {}
 
     // ===========================================
     // Functions for consuming state events
@@ -162,18 +161,27 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Initialize data by fetching both WFO and WFH locations
+     * Called by the UI once all necessary permissions have been granted.
+     * This function now serves as the entry point for data loading and geofence setup.
      */
-    private fun initializeData() {
+    fun onPermissionsGranted() {
+        // Prevent re-initialization if already loaded
+        if (_uiState.value.uiState is UiState.Success || _uiState.value.uiState is UiState.Loading) {
+            Log.d(TAG, "Initialization already started or completed. Skipping.")
+            return
+        }
+
+        Log.d(TAG, "Permissions granted. Starting data initialization.")
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(uiState = UiState.Loading)
 
-                // Fetch both locations concurrently
+                // Fetch locations and status
                 fetchTodayStatus()
                 fetchUserHomeLocation()
 
-                // Don't start location updates automatically - let UI control this
+                // Location updates are started by the UI in a separate LaunchedEffect
+                // that also depends on permissions.
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing data", e)

@@ -22,12 +22,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import android.Manifest
+import android.os.Build
+import androidx.compose.runtime.rememberCoroutineScope
+import com.google.accompanist.permissions.isGranted
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import com.example.infinite_track.utils.PermissionUtils
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -61,15 +74,53 @@ import com.mapbox.maps.MapboxDelicateApi
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.flyTo
 
-@OptIn(ExperimentalMaterial3Api::class, MapboxDelicateApi::class)
+@OptIn(ExperimentalMaterial3Api::class, MapboxDelicateApi::class, ExperimentalPermissionsApi::class)
 @Composable
 fun AttendanceScreen(
     navController: NavController,
     viewModel: AttendanceViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var mapViewInstance by remember { mutableStateOf<MapView?>(null) }
+    val scope = rememberCoroutineScope()
 
-    // Observasi state dari ViewModel yang sudah disederhanakan
+    // --- PERMISSION HANDLING ---
+    val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        listOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        )
+    } else {
+        listOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+    }
+    val permissionState = rememberMultiplePermissionsState(permissions = permissions)
+
+    LaunchedEffect(Unit) {
+        if (!permissionState.allPermissionsGranted) {
+            permissionState.launchMultiplePermissionRequest()
+        }
+    }
+
+    // Check for permissions on resume
+    DisposableEffect(Unit) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                if (!permissionState.allPermissionsGranted) {
+                    permissionState.launchMultiplePermissionRequest()
+                }
+            }
+        }
+        (context as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.addObserver(observer)
+        onDispose {
+            (context as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.removeObserver(observer)
+        }
+    }
+
+    // Observasi state dari ViewModel
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Handle hasil pencarian lokasi dari LocationSearchScreen
@@ -205,12 +256,16 @@ fun AttendanceScreen(
         }
     }
 
-    // Start location updates when UI is ready and data is loaded successfully
-    LaunchedEffect(uiState.uiState) {
-        if (uiState.uiState is UiState.Success) {
-            // Only start location updates after data is loaded and UI is ready
+    // This effect triggers the core logic when permissions are granted.
+    LaunchedEffect(permissionState.allPermissionsGranted) {
+        if (permissionState.allPermissionsGranted) {
+            Log.d("AttendanceScreen", "All permissions granted. Initializing ViewModel and starting location updates.")
+            // Trigger the main data loading and geofence setup in the ViewModel.
+            viewModel.onPermissionsGranted()
+            // Start location updates for the UI.
             viewModel.startLocationUpdates()
-            android.util.Log.d("AttendanceScreen", "Location updates started after UI ready")
+        } else {
+            Log.d("AttendanceScreen", "Permissions not granted. Waiting for user approval.")
         }
     }
 
@@ -237,21 +292,35 @@ fun AttendanceScreen(
         }
 
         is UiState.Error -> {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    ErrorAnimation()
-                    Text(
-                        text = currentUiState.errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(16.dp)
+            // Check if error is due to permissions
+            if (!permissionState.allPermissionsGranted) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    PermissionUtils.PermissionRationaleDialog(
+                        onConfirm = {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            intent.data = Uri.fromParts("package", context.packageName, null)
+                            context.startActivity(intent)
+                        },
+                        onDismiss = { /* User can choose to dismiss */ }
                     )
+                }
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        ErrorAnimation()
+                        Text(
+                            text = currentUiState.errorMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
                 }
             }
         }
