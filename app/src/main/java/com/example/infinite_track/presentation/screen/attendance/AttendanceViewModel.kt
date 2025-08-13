@@ -617,30 +617,7 @@ class AttendanceViewModel @Inject constructor(
      * Handle attendance button click - navigates to face scanner
      * FIXED: Uses new Screen.FaceScanner.createRoute with action parameter
      */
-//    fun onAttendanceButtonClicked() {
-//        // Use the reactive StateFlow value instead of recalculating
-//        val isEnabled = _uiState.value.isButtonEnabled
-//        val buttonText = _uiState.value.buttonText
-//
-//        if (!isEnabled) {
-//            Log.d(TAG, "Attendance button clicked but not enabled (geofence or server restriction)")
-//            return
-//        }
-//
-//        val isCheckIn = buttonText.contains("Check-in", ignoreCase = true)
-//        val action = if (isCheckIn) "checkin" else "checkout"
-//
-//        Log.d(TAG, "Attendance button clicked - $action")
-//
-//        // Update isCheckInMode state before navigation
-//        _uiState.value = _uiState.value.copy(isCheckInMode = isCheckIn)
-//
-//        viewModelScope.launch {
-//            _uiState.value = _uiState.value.copy(
-//                navigationTarget = NavigationTarget.FaceScanner(isCheckIn)
-//            )
-//        }
-//    }
+
 
     /**
      * Handle attendance button click - triggers face verification then check-in/check-out
