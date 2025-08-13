@@ -124,14 +124,14 @@ class AttendancePreference @Inject constructor(
     /**
      * Retrieve last geofence parameters if available
      */
-    suspend fun getLastGeofenceParameters(): Triple<String, Triple<Double, Double>, Int>? {
+    suspend fun getLastGeofenceParameters(): Triple<String, Pair<Double, Double>, Int>? {
         val prefs = dataStore.data.firstOrNull()
         return try {
             val requestId = prefs?.get(LAST_GEOFENCE_REQUEST_ID_KEY) ?: return null
             val lat = prefs.get(LAST_GEOFENCE_LAT_KEY)?.toDouble() ?: return null
             val lng = prefs.get(LAST_GEOFENCE_LNG_KEY)?.toDouble() ?: return null
             val radius = prefs.get(LAST_GEOFENCE_RADIUS_KEY) ?: return null
-            Triple(requestId, Triple(lat, lng), radius)
+            Triple(requestId, Pair(lat, lng), radius)
         } catch (_: Exception) {
             null
         }
