@@ -5,13 +5,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,121 +19,129 @@ private val Context.attendanceDataStore: DataStore<Preferences> by preferencesDa
 
 @Singleton
 class AttendancePreference @Inject constructor(
-    @ApplicationContext private val context: Context
+	@ApplicationContext private val context: Context
 ) {
-    private val dataStore = context.attendanceDataStore
+	private val dataStore = context.attendanceDataStore
 
-    companion object {
-        private val ACTIVE_ATTENDANCE_ID_KEY = intPreferencesKey("active_attendance_id")
-        private val IS_INSIDE_GEOFENCE_KEY = booleanPreferencesKey("is_inside_geofence")
-        private val LAST_GEOFENCE_REQUEST_ID_KEY = stringPreferencesKey("last_geofence_request_id")
-        private val LAST_GEOFENCE_LAT_KEY = stringPreferencesKey("last_geofence_lat")
-        private val LAST_GEOFENCE_LNG_KEY = stringPreferencesKey("last_geofence_lng")
-        private val LAST_GEOFENCE_RADIUS_KEY = intPreferencesKey("last_geofence_radius")
-    }
+	companion object {
+		private val ACTIVE_ATTENDANCE_ID_KEY = intPreferencesKey("active_attendance_id")
+		private val IS_INSIDE_GEOFENCE_KEY = booleanPreferencesKey("is_inside_geofence")
+		private val LAST_GEOFENCE_REQUEST_ID_KEY = stringPreferencesKey("last_geofence_request_id")
+		private val LAST_GEOFENCE_LAT_KEY = floatPreferencesKey("last_geofence_lat")
+		private val LAST_GEOFENCE_LNG_KEY = floatPreferencesKey("last_geofence_lng")
+		private val LAST_GEOFENCE_RADIUS_KEY = floatPreferencesKey("last_geofence_radius")
+	}
 
-    /**
-     * Save the active attendance ID to DataStore
-     */
-    suspend fun saveActiveAttendanceId(id: Int) {
-        dataStore.edit { preferences ->
-            preferences[ACTIVE_ATTENDANCE_ID_KEY] = id
-        }
-    }
+	/**
+	 * Save the active attendance ID to DataStore
+	 */
+	suspend fun saveActiveAttendanceId(id: Int) {
+		dataStore.edit { preferences ->
+			preferences[ACTIVE_ATTENDANCE_ID_KEY] = id
+		}
+	}
 
-    /**
-     * Get the active attendance ID as a Flow
-     */
-    fun getActiveAttendanceId(): Flow<Int?> {
-        return dataStore.data.map { preferences ->
-            preferences[ACTIVE_ATTENDANCE_ID_KEY]
-        }
-    }
+	/**
+	 * Get the active attendance ID as a Flow
+	 */
+	fun getActiveAttendanceId(): Flow<Int?> {
+		return dataStore.data.map { preferences ->
+			preferences[ACTIVE_ATTENDANCE_ID_KEY]
+		}
+	}
 
-    /**
-     * Clear the active attendance ID when checkout is successful
-     */
-    suspend fun clearActiveAttendanceId() {
-        dataStore.edit { preferences ->
-            preferences.remove(ACTIVE_ATTENDANCE_ID_KEY)
-        }
-    }
+	/**
+	 * Clear the active attendance ID when checkout is successful
+	 */
+	suspend fun clearActiveAttendanceId() {
+		dataStore.edit { preferences ->
+			preferences.remove(ACTIVE_ATTENDANCE_ID_KEY)
+		}
+	}
 
-    /**
-     * Persist the last registered geofence request ID for later removal
-     */
-    suspend fun saveLastGeofenceRequestId(requestId: String) {
-        dataStore.edit { preferences ->
-            preferences[LAST_GEOFENCE_REQUEST_ID_KEY] = requestId
-        }
-    }
+	/**
+	 * Persist the last registered geofence request ID for later removal
+	 */
+	suspend fun saveLastGeofenceRequestId(requestId: String) {
+		dataStore.edit { preferences ->
+			preferences[LAST_GEOFENCE_REQUEST_ID_KEY] = requestId
+		}
+	}
 
-    /**
-     * Retrieve the last registered geofence request ID
-     */
-    fun getLastGeofenceRequestId(): Flow<String?> {
-        return dataStore.data.map { preferences ->
-            preferences[LAST_GEOFENCE_REQUEST_ID_KEY]
-        }
-    }
+	/**
+	 * Persist full geofence parameters for restoration after reboot
+	 */
+	suspend fun saveLastGeofenceParams(requestId: String, latitude: Double, longitude: Double, radiusMeters: Float) {
+		dataStore.edit { preferences ->
+			preferences[LAST_GEOFENCE_REQUEST_ID_KEY] = requestId
+			preferences[LAST_GEOFENCE_LAT_KEY] = latitude.toFloat()
+			preferences[LAST_GEOFENCE_LNG_KEY] = longitude.toFloat()
+			preferences[LAST_GEOFENCE_RADIUS_KEY] = radiusMeters
+		}
+	}
 
-    /**
-     * Clear the stored last geofence request ID
-     */
-    suspend fun clearLastGeofenceRequestId() {
-        dataStore.edit { preferences ->
-            preferences.remove(LAST_GEOFENCE_REQUEST_ID_KEY)
-        }
-    }
+	/**
+	 * Retrieve the last registered geofence request ID
+	 */
+	fun getLastGeofenceRequestId(): Flow<String?> {
+		return dataStore.data.map { preferences ->
+			preferences[LAST_GEOFENCE_REQUEST_ID_KEY]
+		}
+	}
 
-    /**
-     * Get the user's geofence status as a Flow
-     */
-    fun isUserInsideGeofence(): Flow<Boolean> {
-        return dataStore.data.map { preferences ->
-            preferences[IS_INSIDE_GEOFENCE_KEY] ?: false
-        }
-    }
+	/**
+	 * Retrieve last geofence parameters as Triple(requestId, Pair(lat,lng), radiusMeters)
+	 */
+	fun getLastGeofenceParams(): Flow<Triple<String, Pair<Double, Double>, Int>?> {
+		return dataStore.data.map { preferences ->
+			val requestId = preferences[LAST_GEOFENCE_REQUEST_ID_KEY]
+			val lat = preferences[LAST_GEOFENCE_LAT_KEY]
+			val lng = preferences[LAST_GEOFENCE_LNG_KEY]
+			val radius = preferences[LAST_GEOFENCE_RADIUS_KEY]
+			if (requestId != null && lat != null && lng != null && radius != null) {
+				Triple(requestId, Pair(lat.toDouble(), lng.toDouble()), radius.toInt())
+			} else {
+				null
+			}
+		}
+	}
 
-    /**
-     * Save the user's geofence status
-     */
-    suspend fun setUserInsideGeofence(isInside: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[IS_INSIDE_GEOFENCE_KEY] = isInside
-        }
-    }
+	/**
+	 * Clear the stored last geofence request ID
+	 */
+	suspend fun clearLastGeofenceRequestId() {
+		dataStore.edit { preferences ->
+			preferences.remove(LAST_GEOFENCE_REQUEST_ID_KEY)
+		}
+	}
 
-    /**
-     * Persist last geofence parameters for re-registration after reboot
-     */
-    suspend fun saveLastGeofenceParameters(
-        requestId: String,
-        latitude: Double,
-        longitude: Double,
-        radius: Int
-    ) {
-        dataStore.edit { preferences ->
-            preferences[LAST_GEOFENCE_REQUEST_ID_KEY] = requestId
-            preferences[LAST_GEOFENCE_LAT_KEY] = latitude.toString()
-            preferences[LAST_GEOFENCE_LNG_KEY] = longitude.toString()
-            preferences[LAST_GEOFENCE_RADIUS_KEY] = radius
-        }
-    }
+	/**
+	 * Clear the stored last geofence parameters
+	 */
+	suspend fun clearLastGeofenceParams() {
+		dataStore.edit { preferences ->
+			preferences.remove(LAST_GEOFENCE_REQUEST_ID_KEY)
+			preferences.remove(LAST_GEOFENCE_LAT_KEY)
+			preferences.remove(LAST_GEOFENCE_LNG_KEY)
+			preferences.remove(LAST_GEOFENCE_RADIUS_KEY)
+		}
+	}
 
-    /**
-     * Retrieve last geofence parameters if available
-     */
-    suspend fun getLastGeofenceParameters(): Triple<String, Triple<Double, Double>, Int>? {
-        val prefs = dataStore.data.firstOrNull()
-        return try {
-            val requestId = prefs?.get(LAST_GEOFENCE_REQUEST_ID_KEY) ?: return null
-            val lat = prefs.get(LAST_GEOFENCE_LAT_KEY)?.toDouble() ?: return null
-            val lng = prefs.get(LAST_GEOFENCE_LNG_KEY)?.toDouble() ?: return null
-            val radius = prefs.get(LAST_GEOFENCE_RADIUS_KEY) ?: return null
-            Triple(requestId, Triple(lat, lng), radius)
-        } catch (_: Exception) {
-            null
-        }
-    }
+	/**
+	 * Get the user's geofence status as a Flow
+	 */
+	fun isUserInsideGeofence(): Flow<Boolean> {
+		return dataStore.data.map { preferences ->
+			preferences[IS_INSIDE_GEOFENCE_KEY] ?: false
+		}
+	}
+
+	/**
+	 * Save the user's geofence status
+	 */
+	suspend fun setUserInsideGeofence(isInside: Boolean) {
+		dataStore.edit { preferences ->
+			preferences[IS_INSIDE_GEOFENCE_KEY] = isInside
+		}
+	}
 }
