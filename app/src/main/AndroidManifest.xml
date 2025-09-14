@@ -42,15 +42,11 @@
         android:theme="@style/Theme.Infinite_Track"
         tools:targetApi="31">
 
-        <!-- BroadcastReceiver untuk Geofencing -->
+        <!-- BroadcastReceiver untuk Geofencing (triggered via PendingIntent, no intent-filter needed) -->
         <receiver
             android:name=".presentation.geofencing.GeofenceBroadcastReceiver"
             android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.android.gms.location.Geofence" />
-            </intent-filter>
-        </receiver>
+            android:exported="false" />
 
         <!-- Boot Completed Receiver -->
         <receiver

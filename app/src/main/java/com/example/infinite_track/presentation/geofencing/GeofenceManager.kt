@@ -55,11 +55,7 @@ class GeofenceManager @Inject constructor(
             context,
             android.Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        val coarse = ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        return fine || coarse
+        return fine
     }
 
     private fun hasBackgroundLocationPermission(): Boolean {
@@ -82,6 +78,7 @@ class GeofenceManager @Inject constructor(
                 ioScope.launch {
                     attendancePreference.clearLastGeofenceRequestId()
                     attendancePreference.clearLastGeofenceParams()
+                    attendancePreference.clearReminderGeofences()
                 }
             }
             addOnFailureListener { exception ->
@@ -94,7 +91,7 @@ class GeofenceManager @Inject constructor(
     fun addGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
         // Permission guards
         if (!hasForegroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin lokasi (FINE/COARSE). Geofence tidak dapat ditambahkan.")
+            Log.e(TAG, "Tidak ada izin ACCESS_FINE_LOCATION. Geofence tidak dapat ditambahkan.")
             return
         }
         if (!hasBackgroundLocationPermission()) {
@@ -102,7 +99,7 @@ class GeofenceManager @Inject constructor(
             return
         }
 
-        val safeRadius = max(100f, radius)
+        val safeRadius = radius
 
         // Check device location settings first (GPS/location must be ON)
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L)
@@ -182,6 +179,68 @@ class GeofenceManager @Inject constructor(
                 }
             }
             addOnFailureListener { Log.e(TAG, "Gagal menghapus geofence: $id", it) }
+        }
+    }
+
+    /**
+     * Add reminder geofence WITHOUT clearing existing ones
+     */
+    @SuppressLint("MissingPermission")
+    fun addReminderGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
+        if (!hasForegroundLocationPermission()) {
+            Log.e(TAG, "Tidak ada izin ACCESS_FINE_LOCATION. Reminder geofence tidak dapat ditambahkan.")
+            return
+        }
+        if (!hasBackgroundLocationPermission()) {
+            Log.e(TAG, "Tidak ada izin ACCESS_BACKGROUND_LOCATION. Reminder geofence gagal (API 29+).")
+            return
+        }
+
+        val safeRadius = radius
+
+        val geofence = Geofence.Builder()
+            .setRequestId(id)
+            .setCircularRegion(latitude, longitude, safeRadius)
+            .setExpirationDuration(Geofence.NEVER_EXPIRE)
+            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
+            .build()
+
+        val geofencingRequest = GeofencingRequest.Builder()
+            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+            .addGeofence(geofence)
+            .build()
+
+        geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
+            addOnSuccessListener {
+                Log.d(TAG, "Reminder geofence ditambahkan: $id")
+                ioScope.launch {
+                    attendancePreference.addReminderGeofences(
+                        listOf(
+                            com.example.infinite_track.data.soucre.local.preferences.ReminderGeofence(
+                                id = id,
+                                latitude = latitude,
+                                longitude = longitude,
+                                radiusMeters = safeRadius
+                            )
+                        )
+                    )
+                }
+            }
+            addOnFailureListener { exception ->
+                val status = (exception as? ApiException)?.statusCode
+                val statusText = status?.let { GeofenceStatusCodes.getStatusCodeString(it) }
+                Log.e(TAG, "Gagal menambahkan reminder geofence: $id (${status ?: "?"}: ${statusText ?: exception.message})", exception)
+            }
+        }
+    }
+
+    fun removeReminderGeofence(id: String) {
+        geofencingClient.removeGeofences(listOf(id)).run {
+            addOnSuccessListener {
+                Log.d(TAG, "Reminder geofence dihapus: $id")
+                ioScope.launch { attendancePreference.removeReminderGeofence(id) }
+            }
+            addOnFailureListener { Log.e(TAG, "Gagal menghapus reminder geofence: $id", it) }
         }
     }
 }

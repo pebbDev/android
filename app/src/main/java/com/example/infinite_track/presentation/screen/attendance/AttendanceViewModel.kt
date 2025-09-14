@@ -174,6 +174,23 @@ class AttendanceViewModel @Inject constructor(
                 fetchUserHomeLocation()
 
                 // Don't start location updates automatically - let UI control this
+                // Register reminder geofences for WFO/WFH if available (prefix with reminder:)
+                _uiState.value.wfoLocation?.let { loc ->
+                    geofenceManager.addReminderGeofence(
+                        id = "reminder:" + loc.locationId,
+                        latitude = loc.latitude,
+                        longitude = loc.longitude,
+                        radius = loc.radius.toFloat()
+                    )
+                }
+                _uiState.value.wfhLocation?.let { loc ->
+                    geofenceManager.addReminderGeofence(
+                        id = "reminder:wfh:" + loc.locationId,
+                        latitude = loc.latitude,
+                        longitude = loc.longitude,
+                        radius = loc.radius.toFloat()
+                    )
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing data", e)
@@ -239,6 +256,28 @@ class AttendanceViewModel @Inject constructor(
                     TAG,
                     "Button state updated: $buttonText, enabled: $isButtonEnabled, mode: $isCheckInMode"
                 )
+
+                // Register/refresh reminder geofences (WFO/WFH) after fetching status
+                try {
+                    todayStatus.activeLocation?.let { loc ->
+                        geofenceManager.addReminderGeofence(
+                            id = "reminder:" + loc.locationId,
+                            latitude = loc.latitude,
+                            longitude = loc.longitude,
+                            radius = loc.radius.toFloat()
+                        )
+                    }
+                    _uiState.value.wfhLocation?.let { loc ->
+                        geofenceManager.addReminderGeofence(
+                            id = "reminder:wfh:" + loc.locationId,
+                            latitude = loc.latitude,
+                            longitude = loc.longitude,
+                            radius = loc.radius.toFloat()
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to add reminder geofences", e)
+                }
 
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to fetch today status", exception)

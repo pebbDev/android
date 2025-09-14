@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -30,7 +31,10 @@ class AttendancePreference @Inject constructor(
 		private val LAST_GEOFENCE_LAT_KEY = floatPreferencesKey("last_geofence_lat")
 		private val LAST_GEOFENCE_LNG_KEY = floatPreferencesKey("last_geofence_lng")
 		private val LAST_GEOFENCE_RADIUS_KEY = floatPreferencesKey("last_geofence_radius")
+		private val REMINDER_GEOFENCES_KEY = stringSetPreferencesKey("reminder_geofences")
 	}
+
+
 
 	/**
 	 * Save the active attendance ID to DataStore
@@ -144,4 +148,59 @@ class AttendancePreference @Inject constructor(
 			preferences[IS_INSIDE_GEOFENCE_KEY] = isInside
 		}
 	}
+
+	/**
+	 * Reminder geofences - multi-store helpers
+	 */
+	suspend fun addReminderGeofences(geofences: List<ReminderGeofence>) {
+		dataStore.edit { preferences ->
+			val current = preferences[REMINDER_GEOFENCES_KEY] ?: emptySet()
+			val merged = current.toMutableSet()
+			geofences.forEach { merged.add(it.serialize()) }
+			preferences[REMINDER_GEOFENCES_KEY] = merged
+		}
+	}
+
+	suspend fun removeReminderGeofence(id: String) {
+		dataStore.edit { preferences ->
+			val current = preferences[REMINDER_GEOFENCES_KEY] ?: emptySet()
+			val filtered = current.filterNot { it.startsWith("$id|") }.toSet()
+			preferences[REMINDER_GEOFENCES_KEY] = filtered
+		}
+	}
+
+	suspend fun clearReminderGeofences() {
+		dataStore.edit { preferences ->
+			preferences.remove(REMINDER_GEOFENCES_KEY)
+		}
+	}
+
+	fun getReminderGeofences(): Flow<List<ReminderGeofence>> {
+		return dataStore.data.map { preferences ->
+			(preferences[REMINDER_GEOFENCES_KEY] ?: emptySet())
+				.mapNotNull { it.deserializeToReminder() }
+		}
+	}
 }
+
+data class ReminderGeofence(
+	val id: String,
+	val latitude: Double,
+	val longitude: Double,
+	val radiusMeters: Float
+)
+
+// Extension utilities for ReminderGeofence <-> String serialization
+private fun ReminderGeofence.serialize(): String =
+	listOf(id, latitude.toString(), longitude.toString(), radiusMeters.toString()).joinToString("|")
+
+private fun String.deserializeToReminder(): ReminderGeofence? = try {
+	val parts = this.split("|")
+	if (parts.size != 4) return null
+	ReminderGeofence(
+		id = parts[0],
+		latitude = parts[1].toDouble(),
+		longitude = parts[2].toDouble(),
+		radiusMeters = parts[3].toFloat()
+	)
+} catch (e: Exception) { null }
