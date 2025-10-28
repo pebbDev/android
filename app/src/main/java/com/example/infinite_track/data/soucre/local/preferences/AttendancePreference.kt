@@ -194,13 +194,20 @@ data class ReminderGeofence(
 private fun ReminderGeofence.serialize(): String =
 	listOf(id, latitude.toString(), longitude.toString(), radiusMeters.toString()).joinToString("|")
 
-private fun String.deserializeToReminder(): ReminderGeofence? = try {
-	val parts = this.split("|")
-	if (parts.size != 4) return null
-	ReminderGeofence(
-		id = parts[0],
-		latitude = parts[1].toDouble(),
-		longitude = parts[2].toDouble(),
-		radiusMeters = parts[3].toFloat()
-	)
-} catch (e: Exception) { null }
+private fun String.deserializeToReminder(): ReminderGeofence? {
+	return try {
+		val parts = this.split("|")
+		if (parts.size != 4) {
+			null
+		} else {
+			ReminderGeofence(
+				id = parts[0],
+				latitude = parts[1].toDouble(),
+				longitude = parts[2].toDouble(),
+				radiusMeters = parts[3].toFloat()
+			)
+		}
+	} catch (e: Exception) {
+		null
+	}
+}
